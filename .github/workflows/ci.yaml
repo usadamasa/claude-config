@@ -1,9 +1,12 @@
-name: test
+name: ci
 
 on:
-  push:
-    branches: [main]
   pull_request:
+  merge_group:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -45,3 +48,12 @@ jobs:
 
       - name: Run bats tests
         run: bats tests/
+
+  ci-status-check:
+    name: CI status check
+    needs: [go-test, bats-test]
+    if: failure()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - run: exit 1

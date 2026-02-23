@@ -1,0 +1,65 @@
+# .golangci.yml
+# アーキテクチャメトリクス向け golangci-lint v2 設定
+# 参考: ソフトウェアアーキテクチャメトリクス (ISBN: 9784814400607)
+version: "2"
+
+linters:
+  default: standard
+  enable:
+    # --- テスト可能性メトリクス ---
+    - gocognit   # 認知的複雑度: コードの理解しやすさを数値化
+    - gocyclo    # 循環複雑度: 分岐の多さを数値化 (McCabe)
+    - cyclop     # 循環複雑度: パッケージ全体も対象
+    - funlen     # 関数の長さ: 行数と文数の上限
+    - nestif     # ネストの深さ: if/for の入れ子レベル
+    # --- 保守性メトリクス ---
+    - maintidx   # 保守性指数: 複雑度・行数・Halstead の複合指標
+    # --- 高度な静的解析 ---
+    - staticcheck  # standard に含まれるが明示的に指定
+
+  settings:
+    # 認知的複雑度: テストコード最大値 72 より上の 75 からスタート
+    # TODO: テストファイルを t.Run() で分割後に 35 まで引き下げる
+    gocognit:
+      min-complexity: 75
+
+    # 循環複雑度 (McCabe): テストコード最大値 37 より上の 40 からスタート
+    # TODO: テストファイルを分割後に 22 まで引き下げる
+    gocyclo:
+      min-complexity: 40
+
+    # 循環複雑度 (cyclop): 生産コード最大値 21 より上の 23 からスタート
+    # TODO: 段階的に 15 まで引き下げる
+    cyclop:
+      max-complexity: 23
+
+    # 関数の長さ: テストコード最大値 ~200行 より上の 210行 からスタート
+    # TODO: テストファイルを分割後に lines:100/statements:60 まで引き下げる
+    funlen:
+      lines: 210
+      statements: 60
+
+    # ネストの深さ
+    nestif:
+      min-complexity: 5
+
+    # 保守性指数: 20 未満は保守困難
+    maintidx:
+      under: 20
+
+  exclusions:
+    # 生成コードは全チェックを除外
+    paths:
+      - ".*\\.pb\\.go$"
+      - ".*_gen\\.go$"
+    # テストファイルは複雑度・長さの制限を将来的に緩めるための準備
+    # 現在はしきい値で許容しているが、t.Run() 分割後にここで除外する
+    rules:
+      - path: "_test\\.go"
+        linters:
+          - cyclop
+          - errcheck   # テストセットアップ関数 (os.MkdirAll 等) の戻り値チェックを緩める
+          - funlen
+          - gocognit
+          - gocyclo
+          - maintidx   # テーブル駆動テストは保守性指数が低くなりがち

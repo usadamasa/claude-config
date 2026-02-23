@@ -1,0 +1,47 @@
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  go-test:
+    name: Go test & lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: go vet
+        run: go vet ./cmd/...
+
+      - name: go test
+        run: go test ./cmd/...
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v7
+        with:
+          version: v2.9.0
+          args: --timeout 5m ./cmd/...
+
+  bats-test:
+    name: bats test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install bats-core
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y bats
+
+      - name: Run bats tests
+        run: bats tests/

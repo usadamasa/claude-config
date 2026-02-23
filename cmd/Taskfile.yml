@@ -1,0 +1,27 @@
+version: '3'
+
+tasks:
+  test:
+    desc: Go テストを実行
+    cmds:
+      - go test ./cmd/...
+
+  test-v:
+    desc: Go テストを詳細モードで実行
+    cmds:
+      - go test -v ./cmd/...
+
+  build:
+    desc: Go バイナリをビルド
+    cmds:
+      - go build ./cmd/...
+
+  vet:
+    desc: Go vet を実行
+    cmds:
+      - go vet ./cmd/...
+
+  lint:
+    desc: golangci-lint でアーキテクチャメトリクスをチェック
+    cmds:
+      - golangci-lint run --timeout 5m ./cmd/...

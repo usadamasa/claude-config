@@ -1,6 +1,19 @@
 version: '3'
 
+includes:
+  go:
+    taskfile: ./cmd/Taskfile.yml
+    optional: true
+
 tasks:
+  test:
+    desc: テストを実行 (bats + Go)
+    cmds:
+      - echo "🧪 テストを実行中..."
+      - bats tests/
+      - task: go:test
+      - echo "✅ テスト完了"
+
   setup:
     desc: Claude設定のファイルレベル symlink をセットアップ
     cmds:

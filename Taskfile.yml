@@ -43,7 +43,11 @@ tasks:
       - |
         for dir in hooks; do
           if [ -d "{{.TASKFILE_DIR}}/$dir" ]; then
-            ln -sfn "{{.TASKFILE_DIR}}/$dir" "$HOME/.claude/$dir"
+            target="$HOME/.claude/$dir"
+            if [ -d "$target" ] && [ ! -L "$target" ]; then
+              rm -rf "$target"
+            fi
+            ln -sfn "{{.TASKFILE_DIR}}/$dir" "$target"
             echo "  ✓ $dir/"
           fi
         done
@@ -52,7 +56,11 @@ tasks:
         for skill_dir in "{{.TASKFILE_DIR}}/skills"/usadamasa-*/; do
           [ -d "$skill_dir" ] || continue
           skill_name=$(basename "$skill_dir")
-          ln -sfn "$skill_dir" "$HOME/.claude/skills/$skill_name"
+          target="$HOME/.claude/skills/$skill_name"
+          if [ -d "$target" ] && [ ! -L "$target" ]; then
+            rm -rf "$target"
+          fi
+          ln -sfn "$skill_dir" "$target"
           echo "  ✓ skills/$skill_name/"
         done
       - echo "✅ Claude設定をセットアップしました"
@@ -77,11 +85,22 @@ tasks:
     desc: Claude設定の symlink を削除
     cmds:
       - rm -f "$HOME/.claude/CLAUDE.md" "$HOME/.claude/settings.json"
-      - rm -f "$HOME/.claude/hooks"
+      - |
+        target="$HOME/.claude/hooks"
+        if [ -L "$target" ]; then
+          rm -f "$target"
+        elif [ -d "$target" ]; then
+          rm -rf "$target"
+        fi
       - |
         for skill_dir in "{{.TASKFILE_DIR}}/skills"/usadamasa-*/; do
           [ -d "$skill_dir" ] || continue
           skill_name=$(basename "$skill_dir")
-          rm -f "$HOME/.claude/skills/$skill_name"
+          target="$HOME/.claude/skills/$skill_name"
+          if [ -L "$target" ]; then
+            rm -f "$target"
+          elif [ -d "$target" ]; then
+            rm -rf "$target"
+          fi
         done
       - echo "🗑️ Claude設定の symlink を削除しました"

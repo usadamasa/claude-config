@@ -147,7 +147,7 @@
       "mcp__plugin_atlassian_atlassian__createConfluencePage"
     ]
   },
-  "model": "claude-opus-4-6[1m]",
+  "model": "opus",
   "hooks": {
     "PreToolUse": [
       {

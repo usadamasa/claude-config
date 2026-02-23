@@ -113,6 +113,37 @@ linters:
 # 段階的に引き下げる方式が推奨される。
 ```
 
+### exclusion ルールのスコープを特定関数に絞る
+
+ファイル全体を除外すると、問題のない関数までリンターチェックから外れてしまう。
+`text` フィールドで lint メッセージの関数名にマッチさせることでスコープを絞れる。
+
+**lint メッセージの関数名パターン:**
+- gocognit: `"FunctionName"` (メッセージ例: `cognitive complexity X of func FunctionName is high`)
+- gocyclo: `"FunctionName"` (メッセージ例: `cyclomatic complexity X of func FunctionName is high`)
+- funlen: `"FunctionName"` (メッセージ例: `Function 'FunctionName' is too long`)
+- maintidx: `"FunctionName"` (メッセージ例: `Function FunctionName has a maintainability index of X`)
+- nestif: 関数名ではなく `if` 文の条件式を含む形式のため `text` フィールドで関数単位には絞れない
+
+**設定例:**
+
+```yaml
+exclusions:
+  rules:
+    # NG: ファイル全体を除外 (他の関数もチェックから外れる)
+    - path: "browser/login\\.go"
+      linters: [funlen, gocognit, gocyclo]
+
+    # OK: text フィールドで特定関数のみを除外
+    - path: "browser/login\\.go"
+      text: "runVisibleLogin"
+      linters: [funlen, gocognit, gocyclo]
+
+    # nestif は text で関数名マッチできないため、ファイル単位のままにする
+    - path: "browser/login\\.go"
+      linters: [nestif]
+```
+
 ### depguard でレイヤー間の直接依存を禁止する例
 
 ```yaml

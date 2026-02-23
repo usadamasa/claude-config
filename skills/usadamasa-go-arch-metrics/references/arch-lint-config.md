@@ -13,7 +13,8 @@ should have ref in 'mayDependOn'/'canUse' or at least one flag of ['anyProjectDe
 ```
 
 「何にも依存しない」を表現するには:
-- `anyVendorDeps: true` → 標準ライブラリのみ使用可とする場合
+- `anyVendorDeps: true` → 外部サードパーティライブラリを制限なく使用可とする場合
+  (注: 「標準ライブラリのみ」ではない。stdlib 専用にしたい場合は `canUse` で明示的に列挙する)
 - deps エントリ自体を省略する (`allow.depGuards` で `deps: []` は可)
 
 ### 2. 同一モジュール内パッケージは `vendors` ではなく `components` に定義する

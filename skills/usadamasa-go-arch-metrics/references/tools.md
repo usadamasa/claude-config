@@ -93,11 +93,12 @@ direnv allow .
 | `gocognit` | 認知的複雑度 | ≤ 20 | 20 超えるとテストが指数関数的に困難になる |
 | `gocyclo` | 循環複雑度 (McCabe) | ≤ 20 | 20 超えると分岐網羅テストが非現実的 |
 | `funlen` | 関数の行数・文数 | ≤ 100行 / 60文 | 画面1枚で収まる範囲 |
-| `nestif` | ネストの深さ | ≤ 5 | 5 超えるとコードの流れが追えなくなる |
+| `nestif` | ネストの深さ | ≤ 8 (導入時推奨) → 目標 ≤ 5 | 既存コードへの一括適用は 5-8 から始め、段階的に絞る |
 | `maintidx` | 保守性指数 | ≥ 20 | 20 未満は実質的なブラックボックス |
-| `deadcode` | 到達不能コード | 0件 | 死んだコードは誤解とバグの温床 |
-| `staticcheck` | 高度なバグ検出 | デフォルト | nil参照, 不正なAPIUsage等 |
+| `staticcheck` | 高度なバグ検出・未使用コード | デフォルト | nil参照, 不正なAPIUsage, U1000系 (未使用コード) 等 |
 | `depguard` | import 禁止リスト | 指定パッケージ=0 | 意図しない依存を防ぐ |
+
+> **注意**: `deadcode` は golangci-lint v2 に存在しない。`golangci-lint run --enable deadcode` を実行すると `Error: unknown linters: 'deadcode'` になる。未使用コードの検出は `staticcheck` の U1000 系チェックが代替する。
 
 ### インストールと実行
 

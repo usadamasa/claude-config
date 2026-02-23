@@ -22,10 +22,9 @@ Go プロジェクトのモジュール性とテスト可能性を測定・改�
 | テスト可能性 | 認知的複雑度 | gocognit | ≤ 20 |
 | テスト可能性 | 循環複雑度 | gocyclo | ≤ 20 |
 | テスト可能性 | 関数の長さ | funlen | ≤ 100行 / 60文 |
-| テスト可能性 | ネストの深さ | nestif | ≤ 5 |
+| テスト可能性 | ネストの深さ | nestif | ≤ 8 (導入時推奨) → 目標 ≤ 5 |
 | 保守性 | 保守性指数 | maintidx | ≥ 20 |
-| 保守性 | 到達不能コード | deadcode | 違反 = 0 |
-| 静的解析 | 高度なバグ検出 | staticcheck | デフォルト有効 |
+| 静的解析 | 高度なバグ検出・未使用コード | staticcheck | デフォルト有効 (U1000 系で未使用コードをカバー) |
 
 ## golangci-lint のバージョンについて
 
@@ -52,7 +51,7 @@ go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
 # aqua.yaml に golangci/golangci-lint@v2.x.x を追加
 ```
 
-**GitHub Actions では aqua 不要**: `golangci/golangci-lint-action@v6` が自動インストールする。
+**GitHub Actions では aqua 不要**: `golangci/golangci-lint-action@v9` が自動インストールする。
 
 ### go-arch-lint のインストール (モジュール性チェックが必要な場合のみ)
 
@@ -90,6 +89,17 @@ bash ~/.claude/skills/usadamasa-go-arch-metrics/scripts/baseline.sh ./
   → テンプレートは `references/golangci-config.md` を参照
 - **`.go-arch-lint.yml`** → パッケージ依存方向ルール (モジュール性)
   → テンプレートは `references/arch-lint-config.md` を参照
+
+> **重要**: `.go-arch-lint.yml` のコンポーネント deps を設計する前に、実際の import を確認すること。
+> プランと実態が乖離していると arch-lint 違反が大量に出る。
+>
+> ```bash
+> # 各パッケージが実際に何を import しているか確認
+> go list -f '{{.ImportPath}}: {{.Imports}}' ./...
+>
+> # main パッケージの import を確認 (エントリポイントは多くのパッケージを直接 import しがち)
+> go list -f '{{.ImportPath}}: {{.Imports}}' .
+> ```
 
 ### Step 3: 結果の分析
 

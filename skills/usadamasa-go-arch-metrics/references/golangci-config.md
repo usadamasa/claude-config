@@ -27,7 +27,7 @@ linters:
     - nestif     # ネストの深さ: if/for の入れ子レベル
     # --- 保守性メトリクス ---
     - maintidx   # 保守性指数: 複雑度・行数・Halstead の複合指標
-    - deadcode   # 到達不能コード: 実行されないコードの検出
+    # deadcode は golangci-lint v2 に存在しない。未使用コードは staticcheck (U1000系) がカバー。
     # --- 高度な静的解析 ---
     - staticcheck  # standard に含まれるが明示的に指定
     # --- 依存管理 ---
@@ -53,8 +53,10 @@ linters:
       statements: 60  # 文数上限 (コメント・空行除く)
 
     # ネストの深さ
+    # 注意: 5 は理想値だが、既存コードへの一括導入では 5-7 の違反が多数出ることが多い。
+    # まず 8 程度から始め、段階的に 5 まで引き下げることを推奨する。
     nestif:
-      min-complexity: 5
+      min-complexity: 8  # 導入時は高めに設定し段階的に 5 まで絞る
 
     # 保守性指数: 20 未満は保守困難
     maintidx:
@@ -83,6 +85,7 @@ linters:
           - funlen
           - gocognit
           - gocyclo
+          - nestif    # テーブル駆動テストのセットアップは深くネストしがち
           - maintidx  # テーブル駆動テストは保守性指数が低くなりがち
 ```
 
@@ -108,6 +111,37 @@ linters:
 ```yaml
 # v2 での段階的導入は、しきい値を現在の最大値以上に設定して導入し、
 # 段階的に引き下げる方式が推奨される。
+```
+
+### exclusion ルールのスコープを特定関数に絞る
+
+ファイル全体を除外すると、問題のない関数までリンターチェックから外れてしまう。
+`text` フィールドで lint メッセージの関数名にマッチさせることでスコープを絞れる。
+
+**lint メッセージの関数名パターン:**
+- gocognit: `"FunctionName"` (メッセージ例: `cognitive complexity X of func FunctionName is high`)
+- gocyclo: `"FunctionName"` (メッセージ例: `cyclomatic complexity X of func FunctionName is high`)
+- funlen: `"FunctionName"` (メッセージ例: `Function 'FunctionName' is too long`)
+- maintidx: `"FunctionName"` (メッセージ例: `Function FunctionName has a maintainability index of X`)
+- nestif: 関数名ではなく `if` 文の条件式を含む形式のため `text` フィールドで関数単位には絞れない
+
+**設定例:**
+
+```yaml
+exclusions:
+  rules:
+    # NG: ファイル全体を除外 (他の関数もチェックから外れる)
+    - path: "browser/login\\.go"
+      linters: [funlen, gocognit, gocyclo]
+
+    # OK: text フィールドで特定関数のみを除外
+    - path: "browser/login\\.go"
+      text: "runVisibleLogin"
+      linters: [funlen, gocognit, gocyclo]
+
+    # nestif は text で関数名マッチできないため、ファイル単位のままにする
+    - path: "browser/login\\.go"
+      linters: [nestif]
 ```
 
 ### depguard でレイヤー間の直接依存を禁止する例

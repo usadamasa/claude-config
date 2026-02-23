@@ -1,0 +1,74 @@
+version: '3'
+
+tasks:
+  setup:
+    desc: Claude設定のファイルレベル symlink をセットアップ
+    cmds:
+      # マイグレーション: ディレクトリ symlink → 実ディレクトリ
+      - |
+        if [ -L "$HOME/.claude" ]; then
+          echo "🔄 ~/.claude をディレクトリ symlink から実ディレクトリに移行中..."
+          OLD_TARGET=$(readlink "$HOME/.claude")
+          case "$OLD_TARGET" in
+            /*) ;;
+            *)  OLD_TARGET="$(cd "$(dirname "$HOME/.claude")" && cd "$OLD_TARGET" && pwd)" ;;
+          esac
+          rm "$HOME/.claude"
+          cp -a "$OLD_TARGET" "$HOME/.claude"
+          echo "  📦 内容をコピーしました: $OLD_TARGET → $HOME/.claude"
+        fi
+      - mkdir -p "$HOME/.claude/skills"
+      # トップレベルファイルの symlink
+      - |
+        for file in CLAUDE.md settings.json; do
+          if [ -f "{{.TASKFILE_DIR}}/$file" ]; then
+            ln -sfn "{{.TASKFILE_DIR}}/$file" "$HOME/.claude/$file"
+            echo "  ✓ $file"
+          fi
+        done
+      # トップレベルディレクトリの symlink
+      - |
+        for dir in hooks; do
+          if [ -d "{{.TASKFILE_DIR}}/$dir" ]; then
+            ln -sfn "{{.TASKFILE_DIR}}/$dir" "$HOME/.claude/$dir"
+            echo "  ✓ $dir/"
+          fi
+        done
+      # usadamasa- prefix スキルの自動検出 & symlink
+      - |
+        for skill_dir in "{{.TASKFILE_DIR}}/skills"/usadamasa-*/; do
+          [ -d "$skill_dir" ] || continue
+          skill_name=$(basename "$skill_dir")
+          ln -sfn "$skill_dir" "$HOME/.claude/skills/$skill_name"
+          echo "  ✓ skills/$skill_name/"
+        done
+      - echo "✅ Claude設定をセットアップしました"
+
+  status:
+    desc: Claude設定の状態を確認
+    cmds:
+      - |
+        echo "Claude設定:"
+        echo "  ディレクトリ: $(test -d "$HOME/.claude" && ! test -L "$HOME/.claude" && echo '✓ 実ディレクトリ' || echo '✗')"
+        echo "  CLAUDE.md: $(test -L "$HOME/.claude/CLAUDE.md" && echo '✓' || echo '✗')"
+        echo "  settings.json: $(test -L "$HOME/.claude/settings.json" && echo '✓' || echo '✗')"
+        echo "  hooks: $(test -L "$HOME/.claude/hooks" && echo '✓' || echo '✗')"
+        echo "  skills:"
+        for skill_dir in "{{.TASKFILE_DIR}}/skills"/usadamasa-*/; do
+          [ -d "$skill_dir" ] || continue
+          skill_name=$(basename "$skill_dir")
+          echo "    $skill_name: $(test -L "$HOME/.claude/skills/$skill_name" && echo '✓' || echo '✗')"
+        done
+
+  clean:
+    desc: Claude設定の symlink を削除
+    cmds:
+      - rm -f "$HOME/.claude/CLAUDE.md" "$HOME/.claude/settings.json"
+      - rm -f "$HOME/.claude/hooks"
+      - |
+        for skill_dir in "{{.TASKFILE_DIR}}/skills"/usadamasa-*/; do
+          [ -d "$skill_dir" ] || continue
+          skill_name=$(basename "$skill_dir")
+          rm -f "$HOME/.claude/skills/$skill_name"
+        done
+      - echo "🗑️ Claude設定の symlink を削除しました"

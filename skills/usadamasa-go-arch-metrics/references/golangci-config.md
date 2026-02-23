@@ -27,7 +27,7 @@ linters:
     - nestif     # ネストの深さ: if/for の入れ子レベル
     # --- 保守性メトリクス ---
     - maintidx   # 保守性指数: 複雑度・行数・Halstead の複合指標
-    # deadcode は golangci-lint v2 に存在しない。到達不能コードは staticcheck (SA4000系) がカバー。
+    # deadcode は golangci-lint v2 に存在しない。未使用コードは staticcheck (U1000系) がカバー。
     # --- 高度な静的解析 ---
     - staticcheck  # standard に含まれるが明示的に指定
     # --- 依存管理 ---
@@ -56,7 +56,7 @@ linters:
     # 注意: 5 は理想値だが、既存コードへの一括導入では 5-7 の違反が多数出ることが多い。
     # まず 8 程度から始め、段階的に 5 まで引き下げることを推奨する。
     nestif:
-      min-complexity: 5  # 導入時は 8 など高めに設定し段階的に絞る
+      min-complexity: 8  # 導入時は高めに設定し段階的に 5 まで絞る
 
     # 保守性指数: 20 未満は保守困難
     maintidx:

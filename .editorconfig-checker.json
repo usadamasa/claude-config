@@ -1,0 +1,8 @@
+{
+  "Exclude": [
+    "^\\.git/",
+    "^node_modules/",
+    "^\\.cache/",
+    "^\\.local/"
+  ]
+}

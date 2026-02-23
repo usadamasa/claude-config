@@ -1,0 +1,10 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/aquaproj/aqua/main/json-schema/aqua-yaml.json
+aqua_version: ">=2.0.0"
+
+registries:
+  - type: standard
+    ref: v4.227.0
+
+packages:
+  - name: fe3dback/go-arch-lint@v1.14.0

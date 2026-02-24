@@ -51,7 +51,7 @@ task clean    # symlink 削除
 
 ### グローバルスキルを追加 (git管理対象)
 
-1. `skills/<skill-name>/SKILL.md` を作成 (prefix 不要)
+1. `skills/<skill-name>/SKILL.md` を作成
 2. `task setup` を実行 (`skills/*/` を自動検出、Taskfile変更不要)
 
 ### プロジェクトスコープのスキルを追加

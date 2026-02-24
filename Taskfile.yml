@@ -33,7 +33,7 @@ tasks:
       - mkdir -p "$HOME/.claude/skills"
       # トップレベルファイルの symlink
       - |
-        for file in CLAUDE.md settings.json; do
+        for file in CLAUDE.md settings.json env.sh; do
           if [ -f "{{.TASKFILE_DIR}}/$file" ]; then
             ln -sfn "{{.TASKFILE_DIR}}/$file" "$HOME/.claude/$file"
             echo "  ✓ $file"
@@ -74,6 +74,7 @@ tasks:
         echo "  CLAUDE.md: $(test -L "$HOME/.claude/CLAUDE.md" && echo '✓' || echo '✗')"
         echo "  settings.json: $(test -L "$HOME/.claude/settings.json" && echo '✓' || echo '✗')"
         echo "  hooks: $(test -L "$HOME/.claude/hooks" && echo '✓' || echo '✗')"
+        echo "  env.sh: $(test -L "$HOME/.claude/env.sh" && echo '✓' || echo '✗')"
         echo "  skills:"
         for skill_dir in "{{.TASKFILE_DIR}}/skills"/*/; do
           [ -d "$skill_dir" ] || continue
@@ -84,7 +85,7 @@ tasks:
   clean:
     desc: Claude設定の symlink を削除
     cmds:
-      - rm -f "$HOME/.claude/CLAUDE.md" "$HOME/.claude/settings.json"
+      - rm -f "$HOME/.claude/CLAUDE.md" "$HOME/.claude/settings.json" "$HOME/.claude/env.sh"
       - |
         target="$HOME/.claude/hooks"
         if [ -L "$target" ]; then

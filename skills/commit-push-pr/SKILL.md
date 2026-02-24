@@ -1,21 +1,16 @@
 ---
-name: draft-pr
-description: コミットをfixupして1つに集約し、Draft PRを作成するワークフロー。差分からコミットメッセージを自動生成します。「PRを作って」「Draft PRを作成」「コミットをまとめてPR」「push してPR」のように依頼されたときに使用する。
+name: commit-push-pr
+description: コミット・Push・PR作成の統合ワークフロー。既存PRがあれば更新し、なければ新規作成する。fixupモード(コミット集約+Draft PR)とシンプルモード(通常コミット+PR)を自動判定する。「PRを作って」「Draft PRを作成」「コミットをまとめてPR」「push してPR」「commit-push-pr」のように依頼されたときに使用する。
 ---
 
-# draft-pr
+# commit-push-pr
 
-現在のブランチのコミットを1つに集約し、GitHub MCP ツールで Draft PR を作成・更新する。
+コミット・Push・PR作成を一括で行う。既存PRの存在を事前チェックし、作成/更新を自動判定する。
 
-## ワークフロー概要
+## モード判定
 
-1. リポジトリ情報取得 (owner/repo)
-2. 親ブランチの検出 (tracking → merge-base距離 → デフォルト)
-3. ベースブランチの決定 (SQUASH_BASE / PR_BASE)
-4. コミット状況を確認し準備
-5. 差分からコミットメッセージを自動生成
-6. force push
-7. GitHub MCP で Draft PR を作成 or 更新
+- **fixup モード**: 複数コミットがある場合、1つに集約して Draft PR を作成/更新する
+- **シンプルモード**: 単一コミットまたは未コミット変更のみの場合、通常のコミット+Push+PR作成/更新を行う
 
 ## Context
 
@@ -27,7 +22,7 @@ description: コミットをfixupして1つに集約し、Draft PRを作成す�
 
 ### 1. リポジトリ情報の取得
 
-owner と repo を取得（MCP ツールで必須）:
+owner と repo を取得 (MCP ツールで必須):
 
 ```bash
 git remote get-url origin
@@ -79,8 +74,8 @@ git remote show origin | grep 'HEAD branch' | sed 's/.*: //'
 
 検出した親ブランチについて以下の2つの変数を決定する:
 
-- `$SQUASH_BASE`: コミット集約の基準点（merge-base のコミットハッシュ）
-- `$PR_BASE`: PRのベースブランチ名
+- `$SQUASH_BASE`: コミット集約の基準点 (merge-base のコミットハッシュ)
+- `$PR_BASE`: PR のベースブランチ名
 
 ```bash
 # リモートの最新を取得
@@ -93,7 +88,7 @@ git ls-remote --heads origin "$PARENT" | grep -q "$PARENT"
 ```
 
 - **存在する** → `$PR_BASE = $PARENT`
-- **存在しない** → `$PR_BASE = デフォルトブランチ`（フォールバック、ユーザーに通知）
+- **存在しない** → `$PR_BASE = デフォルトブランチ` (フォールバック、ユーザーに通知)
 
 `$SQUASH_BASE` はリモート存在に関わらず常に merge-base を使用:
 
@@ -101,19 +96,20 @@ git ls-remote --heads origin "$PARENT" | grep -q "$PARENT"
 SQUASH_BASE=$(git merge-base HEAD "origin/$PARENT")
 ```
 
-### 4. 前提条件の確認
+### 4. モード判定と前提条件の確認
 
 - 現在のブランチが `$PR_BASE` と異なることを確認
   - **同じ場合**: AskUserQuestion で新しいブランチ名を確認し `git checkout -b <name>` で作成
 - コミット数を確認: `git rev-list --count $SQUASH_BASE..HEAD`
-  - **1以上** → ケースA（rebase fixup）
+  - **2以上** → **fixup モード** (ケースA)
+  - **1** → **シンプルモード** (ケースC): コミット済み、Push のみ必要
   - **0** → `git status --porcelain` を確認
-    - 変更あり → ケースB（新規コミット）
-    - 変更なし → エラー: 変更がないためPR作成不可
+    - 変更あり → **シンプルモード** (ケースB): 新規コミット + Push
+    - 変更なし → エラー: 変更がないため PR 作成不可
 
 ### 5. コミット準備
 
-#### ケースA: 差分コミットあり（rebase fixup）
+#### ケースA: fixup モード (複数コミットあり)
 
 1. 未コミット変更があれば先にコミット:
    ```bash
@@ -130,7 +126,7 @@ SQUASH_BASE=$(git merge-base HEAD "origin/$PARENT")
    ```bash
    git diff $SQUASH_BASE..HEAD
    ```
-   Conventional Commits 形式で生成（feat:, fix:, refactor:, docs:, chore:, test: 等）。
+   Conventional Commits 形式で生成 (feat:, fix:, refactor:, docs:, chore:, test: 等)。
 
 4. 生成メッセージでコミットを上書き:
    ```bash
@@ -139,24 +135,27 @@ SQUASH_BASE=$(git merge-base HEAD "origin/$PARENT")
 
 5. 生成したメッセージをユーザーに提示し確認を得る。
 
-#### ケースB: 差分コミットなし（新規コミット）
+#### ケースB: シンプルモード (未コミット変更のみ)
 
 1. `git add -A`
 2. `git diff --cached` で差分確認
 3. 差分から Conventional Commits 形式でメッセージ生成
 4. `git commit -m "生成したメッセージ"`
 
-### 6. Force Push
+#### ケースC: シンプルモード (コミット済み)
 
-```bash
-git push --force-with-lease origin <current-branch>
-```
+Push のみ必要。コミットメッセージは既存のものを使用する。
+
+### 6. Push
+
+- **fixup モード**: `git push --force-with-lease origin <current-branch>`
+- **シンプルモード**: `git push -u origin <current-branch>`
 
 失敗時はエラーメッセージを表示。
 
 ### 7. 既存PRの確認
 
-`mcp__plugin_github_github__list_pull_requests` を使用:
+`mcp__github__list_pull_requests` を使用:
 
 ```
 owner: OWNER
@@ -165,9 +164,16 @@ head: "OWNER:<current-branch>"
 state: "open"
 ```
 
-結果が空なら新規作成、PRが見つかれば更新。
+> MCP ツールが利用不可の場合のフォールバック:
+> ```bash
+> gh pr list --head <current-branch> --state open --json number,url,title
+> ```
 
-### 8. PRテンプレートの検出
+結果が空なら新規作成、PR が見つかれば更新。
+
+### 8. PR テンプレートの検出
+
+新規作成の場合のみ実行:
 
 ```bash
 gh repo view --json pullRequestTemplates -q '.pullRequestTemplates'
@@ -177,11 +183,11 @@ gh repo view --json pullRequestTemplates -q '.pullRequestTemplates'
 - 複数 → AskUserQuestion でユーザーに選択を促す
 - なし → デフォルト構造を生成
 
-### 9. PR作成または更新
+### 9. PR 作成または更新
 
 #### 新規作成
 
-`mcp__plugin_github_github__create_pull_request` を使用:
+`mcp__github__create_pull_request` を使用:
 
 ```
 owner: OWNER
@@ -189,11 +195,11 @@ repo: REPO
 title: コミットメッセージの1行目
 head: <current-branch>
 base: $PR_BASE
-draft: true
+draft: fixup モードなら true、シンプルモードなら false
 body: テンプレート or デフォルト構造
 ```
 
-**デフォルト body 構造**（テンプレートなしの場合）:
+**デフォルト body 構造** (テンプレートなしの場合):
 
 ```markdown
 ## Summary
@@ -204,9 +210,9 @@ body: テンプレート or デフォルト構造
 - file2.ts
 ```
 
-#### 既存PRの更新
+#### 既存 PR の更新
 
-`mcp__plugin_github_github__update_pull_request` を使用:
+`mcp__github__update_pull_request` を使用:
 
 ```
 owner: OWNER
@@ -216,14 +222,15 @@ title: コミットメッセージの1行目
 body: 更新した内容
 ```
 
-force push 済みなのでコミットは反映済み。
+Push 済みなのでコミットは反映済み。既存 PR の URL をユーザーに報告する。
 
 ## 注意事項
 
-- `--force-with-lease` で安全な force push
+- fixup モードでは `--force-with-lease` で安全な force push を行う
 - rebase コンフリクト時は `git rebase --abort` してユーザーに通知
 - MCP ツールの owner/repo は `git remote get-url origin` から必ず取得
 - PR body にバッククォートや特殊文字を含めても MCP は構造化パラメータなので問題なし
 - 親ブランチ検出は3段階フォールバック: tracking config → merge-base距離比較 → デフォルトブランチ
-- `$SQUASH_BASE`（コミット集約基準、merge-base ハッシュ）と `$PR_BASE`（PR先ブランチ名）は異なる場合がある
-- 親ブランチがリモートに未pushの場合、PR base はデフォルトブランチにフォールバックする（ユーザーに通知）
+- `$SQUASH_BASE` (コミット集約基準、merge-base ハッシュ) と `$PR_BASE` (PR先ブランチ名) は異なる場合がある
+- 親ブランチがリモートに未pushの場合、PR base はデフォルトブランチにフォールバックする (ユーザーに通知)
+- **既存 PR がある場合は新規作成をスキップし、更新のみ行う**

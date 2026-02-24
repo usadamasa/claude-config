@@ -51,9 +51,9 @@ tasks:
             echo "  ✓ $dir/"
           fi
         done
-      # usadamasa- prefix スキルの自動検出 & symlink
+      # skills/ 配下の全スキルを自動検出 & symlink
       - |
-        for skill_dir in "{{.TASKFILE_DIR}}/skills"/usadamasa-*/; do
+        for skill_dir in "{{.TASKFILE_DIR}}/skills"/*/; do
           [ -d "$skill_dir" ] || continue
           skill_name=$(basename "$skill_dir")
           target="$HOME/.claude/skills/$skill_name"
@@ -75,7 +75,7 @@ tasks:
         echo "  settings.json: $(test -L "$HOME/.claude/settings.json" && echo '✓' || echo '✗')"
         echo "  hooks: $(test -L "$HOME/.claude/hooks" && echo '✓' || echo '✗')"
         echo "  skills:"
-        for skill_dir in "{{.TASKFILE_DIR}}/skills"/usadamasa-*/; do
+        for skill_dir in "{{.TASKFILE_DIR}}/skills"/*/; do
           [ -d "$skill_dir" ] || continue
           skill_name=$(basename "$skill_dir")
           echo "    $skill_name: $(test -L "$HOME/.claude/skills/$skill_name" && echo '✓' || echo '✗')"
@@ -93,7 +93,7 @@ tasks:
           rm -rf "$target"
         fi
       - |
-        for skill_dir in "{{.TASKFILE_DIR}}/skills"/usadamasa-*/; do
+        for skill_dir in "{{.TASKFILE_DIR}}/skills"/*/; do
           [ -d "$skill_dir" ] || continue
           skill_name=$(basename "$skill_dir")
           target="$HOME/.claude/skills/$skill_name"

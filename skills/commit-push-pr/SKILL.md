@@ -20,23 +20,7 @@ description: コミット・Push・PR作成の統合ワークフロー。既存P
 
 ## 手順
 
-### 1. リポジトリ情報の取得
-
-owner と repo を取得 (MCP ツールで必須):
-
-```bash
-git remote get-url origin
-```
-
-出力例から owner/repo をパース:
-- `git@github.com:OWNER/REPO.git` → OWNER, REPO
-- `https://github.com/OWNER/REPO.git` → OWNER, REPO
-
-`.git` サフィックスがある場合は除去。
-
-以降、取得した OWNER と REPO を各 MCP ツール呼び出しに使用する。
-
-### 2. 親ブランチの検出
+### 1. 親ブランチの検出
 
 以下の3段階フォールバックで親ブランチ `$PARENT` を検出する。
 
@@ -70,7 +54,7 @@ git remote show origin | grep 'HEAD branch' | sed 's/.*: //'
 
 検出後、AskUserQuestion でユーザーに `$PARENT` が正しいか確認を取る。
 
-### 3. ベースブランチの決定
+### 2. ベースブランチの決定
 
 検出した親ブランチについて以下の2つの変数を決定する:
 
@@ -96,7 +80,7 @@ git ls-remote --heads origin "$PARENT" | grep -q "$PARENT"
 SQUASH_BASE=$(git merge-base HEAD "origin/$PARENT")
 ```
 
-### 4. モード判定と前提条件の確認
+### 3. モード判定と前提条件の確認
 
 - 現在のブランチが `$PR_BASE` と異なることを確認
   - **同じ場合**: AskUserQuestion で新しいブランチ名を確認し `git checkout -b <name>` で作成
@@ -107,7 +91,7 @@ SQUASH_BASE=$(git merge-base HEAD "origin/$PARENT")
     - 変更あり → **シンプルモード** (ケースB): 新規コミット + Push
     - 変更なし → エラー: 変更がないため PR 作成不可
 
-### 5. コミット準備
+### 4. コミット準備
 
 #### ケースA: fixup モード (複数コミットあり)
 
@@ -146,32 +130,27 @@ SQUASH_BASE=$(git merge-base HEAD "origin/$PARENT")
 
 Push のみ必要。コミットメッセージは既存のものを使用する。
 
-### 6. Push
+### 5. Push
 
 - **fixup モード**: `git push --force-with-lease origin <current-branch>`
 - **シンプルモード**: `git push -u origin <current-branch>`
 
 失敗時はエラーメッセージを表示。
 
-### 7. 既存PRの確認
+### 6. 既存PRの確認
 
-`mcp__github__list_pull_requests` を使用:
-
-```
-owner: OWNER
-repo: REPO
-head: "OWNER:<current-branch>"
-state: "open"
+```bash
+CURRENT=$(git branch --show-current)
+PR_JSON=$(gh pr list --head "$CURRENT" --state open --json number,url,title)
+PR_NUMBER=$(echo "$PR_JSON" | jq -r '.[0].number // empty')
+PR_URL=$(echo "$PR_JSON" | jq -r '.[0].url // empty')
 ```
 
-> MCP ツールが利用不可の場合のフォールバック:
-> ```bash
-> gh pr list --head <current-branch> --state open --json number,url,title
-> ```
+- `$PR_NUMBER` が空 → 新規作成 (ステップ 7 → 8 へ)
+- `$PR_NUMBER` が取得できた → 既存 PR の更新 (ステップ 8 の「既存 PR の更新」へ)
+- 複数 PR がヒットした場合 → AskUserQuestion でユーザーにどの PR を更新するか選択を促す
 
-結果が空なら新規作成、PR が見つかれば更新。
-
-### 8. PR テンプレートの検出
+### 7. PR テンプレートの検出
 
 新規作成の場合のみ実行:
 
@@ -183,53 +162,57 @@ gh repo view --json pullRequestTemplates -q '.pullRequestTemplates'
 - 複数 → AskUserQuestion でユーザーに選択を促す
 - なし → デフォルト構造を生成
 
-### 9. PR 作成または更新
+### 8. PR 作成または更新
+
+コミットメッセージの1行目を PR タイトルとして使用する:
+
+```bash
+PR_TITLE=$(git log -1 --pretty=%s)
+```
 
 #### 新規作成
 
-`mcp__github__create_pull_request` を使用:
-
-```
-owner: OWNER
-repo: REPO
-title: コミットメッセージの1行目
-head: <current-branch>
-base: $PR_BASE
-draft: fixup モードなら true、シンプルモードなら false
-body: テンプレート or デフォルト構造
-```
-
-**デフォルト body 構造** (テンプレートなしの場合):
-
-```markdown
+```bash
+# シンプルモード
+gh pr create --base "$PR_BASE" --title "$PR_TITLE" --body "$(cat <<'EOF'
 ## Summary
 <差分から読み取った変更内容の要約>
 
 ## Changes
 - file1.ts
 - file2.ts
+EOF
+)"
+
+# fixup モード (Draft)
+gh pr create --draft --base "$PR_BASE" --title "$PR_TITLE" --body "$(cat <<'EOF'
+## Summary
+<差分から読み取った変更内容の要約>
+
+## Changes
+- file1.ts
+- file2.ts
+EOF
+)"
 ```
+
+テンプレートがある場合は body にテンプレートの内容を使用する。
 
 #### 既存 PR の更新
 
-`mcp__github__update_pull_request` を使用:
+ステップ 6 で取得した `$PR_NUMBER` を使用する:
 
-```
-owner: OWNER
-repo: REPO
-pullNumber: 既存PRの番号
-title: コミットメッセージの1行目
-body: 更新した内容
+```bash
+gh pr edit "$PR_NUMBER" --title "$PR_TITLE" --body "更新した内容"
 ```
 
-Push 済みなのでコミットは反映済み。既存 PR の URL をユーザーに報告する。
+Push 済みなのでコミットは反映済み。`$PR_URL` をユーザーに報告する。
 
 ## 注意事項
 
 - fixup モードでは `--force-with-lease` で安全な force push を行う
 - rebase コンフリクト時は `git rebase --abort` してユーザーに通知
-- MCP ツールの owner/repo は `git remote get-url origin` から必ず取得
-- PR body にバッククォートや特殊文字を含めても MCP は構造化パラメータなので問題なし
+- PR body に特殊文字を含める場合は HEREDOC (`cat <<'EOF' ... EOF`) で渡すことでシェルのエスケープ問題を回避する
 - 親ブランチ検出は3段階フォールバック: tracking config → merge-base距離比較 → デフォルトブランチ
 - `$SQUASH_BASE` (コミット集約基準、merge-base ハッシュ) と `$PR_BASE` (PR先ブランチ名) は異なる場合がある
 - 親ブランチがリモートに未pushの場合、PR base はデフォルトブランチにフォールバックする (ユーザーに通知)

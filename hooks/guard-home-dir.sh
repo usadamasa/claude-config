@@ -7,10 +7,11 @@ readonly PROJECT_DIR=$(echo "$INPUT" | jq -r '.cwd')
 
 # 許可するパス一覧(追加削除はここで管理)
 readonly ALLOWED_PATHS=(
-  "$PROJECT_DIR"
-  "$HOME/src"
   "$HOME/.claude"
   "$HOME/obsidian"
+  "$HOME/src"
+  "$HOME/tmp"
+  "$PROJECT_DIR"
 )
 
 # ファイルパスを取得(ツールごとに異なるキー)

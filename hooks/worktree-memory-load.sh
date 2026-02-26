@@ -3,8 +3,13 @@
 # worktree 作成時に親リポジトリの Claude Code auto-memory を worktree にコピーする
 #
 # Usage: worktree-memory-load.sh <worktree-path>
+# 環境変数: DRY_RUN=1 で副作用なしのシミュレーション
 
 set -euo pipefail
+
+HOOK_NAME="worktree-memory-load"
+SCRIPT_DIR="${SCRIPT_DIR:-$(cd "$(dirname "$0")" && pwd)}"
+source "$SCRIPT_DIR/lib/hook-logger.sh"
 
 WORKTREE_PATH="${1:-}"
 if [ -z "$WORKTREE_PATH" ]; then exit 0; fi
@@ -43,14 +48,23 @@ WORKTREE_MEM="$HOME/.claude/projects/$WORKTREE_ENC/memory"
 PARENT_MEM="$HOME/.claude/projects/$PARENT_ENC/memory"
 
 # 親 memory ディレクトリが存在しない場合はスキップ
-[ -d "$PARENT_MEM" ] || exit 0
+if [ ! -d "$PARENT_MEM" ]; then
+  log_skip "親 memory が存在しない"
+  exit 0
+fi
 
 # 親 memory が空の場合はスキップ
 # shellcheck disable=SC2012
-[ -n "$(ls -A "$PARENT_MEM" 2>/dev/null)" ] || exit 0
+if [ -z "$(ls -A "$PARENT_MEM" 2>/dev/null)" ]; then
+  log_skip "親 memory が空"
+  exit 0
+fi
 
 # worktree memory ディレクトリを自動作成
-mkdir -p "$WORKTREE_MEM"
+logged_mkdir "$WORKTREE_MEM"
 
-# 親 memory の全ファイルを worktree にコピー
-cp "$PARENT_MEM/"* "$WORKTREE_MEM/"
+# 親 memory の全ファイルを worktree にコピー (各ファイルごとにログ出力)
+for f in "$PARENT_MEM/"*; do
+  [ -f "$f" ] || continue
+  logged_cp "$f" "$WORKTREE_MEM/$(basename "$f")"
+done

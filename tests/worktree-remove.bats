@@ -1,5 +1,6 @@
 #!/usr/bin/env bats
 # worktree-remove.sh のテスト
+bats_require_minimum_version 1.5.0
 
 SCRIPT_PATH="$(cd "$(dirname "$BATS_TEST_FILENAME")/.." && pwd)/hooks/worktree-remove.sh"
 
@@ -7,6 +8,11 @@ setup() {
   TEST_TMPDIR=$(mktemp -d)
   MOCK_BIN="$TEST_TMPDIR/bin"
   mkdir -p "$MOCK_BIN"
+
+  # hook-logger.sh を MOCK_BIN/lib にコピー
+  REAL_HOOKS_DIR="$(cd "$(dirname "$BATS_TEST_FILENAME")/.." && pwd)/hooks"
+  mkdir -p "$MOCK_BIN/lib"
+  cp "$REAL_HOOKS_DIR/lib/hook-logger.sh" "$MOCK_BIN/lib/hook-logger.sh"
 
   # テスト用 worktree パス
   MOCK_WORKTREE_PATH="$TEST_TMPDIR/worktrees/test-repo/my-branch"
@@ -120,4 +126,67 @@ MOCKEOF
   [[ "$(cat "$TEST_TMPDIR/git-calls.log")" == *"--force"* ]]
   # prune も呼ばれる
   [[ "$(cat "$TEST_TMPDIR/git-calls.log")" == *"worktree prune"* ]]
+}
+
+# =============================================================================
+# 通常モード: 操作ログ
+# =============================================================================
+
+@test "通常モード: git worktree remove の CMD ログが出力される" {
+  run bash "$SCRIPT_PATH" <<< "{\"worktree_path\":\"$MOCK_WORKTREE_PATH\"}"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"[worktree-remove]"* ]]
+  [[ "$output" == *"CMD"* ]]
+  [[ "$output" == *"worktree remove"* ]]
+}
+
+# =============================================================================
+# dry-run モード
+# =============================================================================
+
+@test "dry-run: git worktree remove が実行されない" {
+  # git の呼び出しをログに記録するモック
+  cat > "$MOCK_BIN/git" << 'MOCKEOF'
+#!/bin/bash
+echo "GIT_CALLED: $@" >> "$TEST_TMPDIR/git-calls.log"
+if [ "$1" = "worktree" ]; then
+  exit 0
+fi
+/usr/bin/git "$@"
+MOCKEOF
+  chmod +x "$MOCK_BIN/git"
+
+  run env DRY_RUN=1 bash "$SCRIPT_PATH" <<< "{\"worktree_path\":\"$MOCK_WORKTREE_PATH\"}"
+
+  [ "$status" -eq 0 ]
+  # git worktree remove は呼ばれないこと
+  if [ -f "$TEST_TMPDIR/git-calls.log" ]; then
+    ! grep -q "worktree remove" "$TEST_TMPDIR/git-calls.log"
+  fi
+}
+
+@test "dry-run: [DRY-RUN] CMD メッセージが出力される" {
+  run env DRY_RUN=1 bash "$SCRIPT_PATH" <<< "{\"worktree_path\":\"$MOCK_WORKTREE_PATH\"}"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"[DRY-RUN]"* ]]
+  [[ "$output" == *"CMD"* ]]
+  [[ "$output" == *"worktree remove"* ]]
+}
+
+@test "dry-run: DRY_RUN が worktree-memory-save.sh に伝播する" {
+  # save モックで DRY_RUN を記録
+  cat > "$MOCK_BIN/worktree-memory-save.sh" << 'MOCKEOF'
+#!/bin/bash
+echo "SAVE_DRY_RUN=$DRY_RUN" >> "$TEST_TMPDIR/save-env.log"
+exit 0
+MOCKEOF
+  chmod +x "$MOCK_BIN/worktree-memory-save.sh"
+
+  run env DRY_RUN=1 bash "$SCRIPT_PATH" <<< "{\"worktree_path\":\"$MOCK_WORKTREE_PATH\"}"
+
+  [ "$status" -eq 0 ]
+  [ -f "$TEST_TMPDIR/save-env.log" ]
+  [[ "$(cat "$TEST_TMPDIR/save-env.log")" == *"SAVE_DRY_RUN=1"* ]]
 }

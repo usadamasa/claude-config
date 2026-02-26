@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -30,10 +31,18 @@ type ReportMetadata struct {
 
 // Recommendations はカテゴリ別の推奨事項を含む｡
 type Recommendations struct {
-	Add               []PatternRecommendation `json:"add"`
-	Review            []PatternRecommendation `json:"review"`
-	Unused            []UnusedEntry           `json:"unused"`
-	BareEntryWarnings []string                `json:"bare_entry_warnings,omitempty"`
+	Add                []PatternRecommendation `json:"add"`
+	Review             []PatternRecommendation `json:"review"`
+	Unused             []UnusedEntry           `json:"unused"`
+	BareEntryWarnings  []string                `json:"bare_entry_warnings,omitempty"`
+	DenyBypassWarnings []DenyBypassWarning     `json:"deny_bypass_warnings,omitempty"`
+}
+
+// DenyBypassWarning は allow の Bash コマンドが deny の Read/Write をバイパスするリスク｡
+type DenyBypassWarning struct {
+	AllowEntry   string `json:"allow_entry"`
+	BypassedDeny string `json:"bypassed_deny"`
+	Risk         string `json:"risk"`
 }
 
 // PatternRecommendation は追加または確認が推奨されるパターン｡
@@ -162,6 +171,48 @@ func GenerateReport(scanResults []ScanResult, allow, deny, ask []string, days, f
 	checkUnused(deny, "deny")
 	checkUnused(ask, "ask")
 
+	// deny バイパスリスクのクロスチェック
+	// allow にある Bash コマンドが deny の Read/Write をバイパスできるか検出
+	var denyBypassWarnings []DenyBypassWarning
+	for _, allowEntry := range allow {
+		tool, pattern, ok := ParsePermissionEntry(allowEntry)
+		if !ok || tool != "Bash" {
+			continue
+		}
+		cat := CategorizePermission("Bash", pattern)
+		if !cat.DenyBypassRisk {
+			continue
+		}
+		// deny リストの Read/Write エントリとクロスチェック
+		for _, denyEntry := range deny {
+			denyTool, _, denyOk := ParsePermissionEntry(denyEntry)
+			if !denyOk {
+				continue
+			}
+			// bypass タイプに応じてチェック
+			bypassType := getDenyBypassType(pattern)
+			if bypassType == "read" && denyTool == "Read" {
+				denyBypassWarnings = append(denyBypassWarnings, DenyBypassWarning{
+					AllowEntry:   allowEntry,
+					BypassedDeny: denyEntry,
+					Risk:         cat.Reason,
+				})
+			} else if bypassType == "write" && denyTool == "Write" {
+				denyBypassWarnings = append(denyBypassWarnings, DenyBypassWarning{
+					AllowEntry:   allowEntry,
+					BypassedDeny: denyEntry,
+					Risk:         cat.Reason,
+				})
+			} else if bypassType == "both" && (denyTool == "Read" || denyTool == "Write") {
+				denyBypassWarnings = append(denyBypassWarnings, DenyBypassWarning{
+					AllowEntry:   allowEntry,
+					BypassedDeny: denyEntry,
+					Risk:         cat.Reason,
+				})
+			}
+		}
+	}
+
 	// ソート
 	sort.Slice(allPatterns, func(i, j int) bool { return allPatterns[i].Count > allPatterns[j].Count })
 	sort.Slice(addRecs, func(i, j int) bool { return addRecs[i].Count > addRecs[j].Count })
@@ -178,18 +229,34 @@ func GenerateReport(scanResults []ScanResult, allow, deny, ask []string, days, f
 		CurrentDeny:  deny,
 		CurrentAsk:   ask,
 		Recommendations: Recommendations{
-			Add:               addRecs,
-			Review:            reviewRecs,
-			Unused:            unusedRecs,
-			BareEntryWarnings: bareWarnings,
+			Add:                addRecs,
+			Review:             reviewRecs,
+			Unused:             unusedRecs,
+			BareEntryWarnings:  bareWarnings,
+			DenyBypassWarnings: denyBypassWarnings,
 		},
 		AllPatterns: allPatterns,
 	}
 }
 
+// getDenyBypassType は Bash コマンドパターンの deny バイパスタイプを返す｡
+func getDenyBypassType(pattern string) string {
+	for _, p := range bashDenyBypassPatterns {
+		if p.match(pattern) {
+			return p.bypass
+		}
+	}
+	return ""
+}
+
 // matchPattern はスキャンパターンがパーミッションパターンにマッチするか判定する｡
 func matchPattern(scanPattern, permPattern string) bool {
 	if scanPattern == permPattern {
+		return true
+	}
+	// プレフィックスマッチ (Bash の :* 形式に対応)
+	// "gh" は "gh pr" にマッチ、"src" は "src/main.go" にマッチ
+	if strings.HasPrefix(scanPattern, permPattern+" ") || strings.HasPrefix(scanPattern, permPattern+"/") {
 		return true
 	}
 	// ワイルドカードマッチ

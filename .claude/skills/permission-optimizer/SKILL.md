@@ -38,6 +38,7 @@ go run ./cmd/analyze-permissions --days 30
 - **recommendations.review**: 要確認パーミッション(review/askカテゴリまたはdenyすべきもの)
 - **recommendations.unused**: 未使用パーミッション(リストにあるが使用されていない)
 - **recommendations.bare_entry_warnings**: ベアエントリ警告(修飾子なしのエントリ)
+- **recommendations.deny_bypass_warnings**: deny バイパスリスク警告(allow の Bash コマンドが deny の Read/Write をバイパスする)
 - **all_patterns**: 全パターンの使用統計
 
 ### 3. settings.jsonの更新
@@ -83,11 +84,25 @@ Claude Codeのパーミッション評価は **deny → ask → allow** の順�
 
 ### Bash コマンド
 
-| カテゴリ | 説明 | 例 |
-|----------|------|-----|
-| safe | 読取系・ビルドツール | git status, go test, task, make, brew list |
-| ask | 変更・破壊操作 | git commit, git push, git rebase, rm -rf |
-| deny | 外部通信・特権操作 | curl, wget, sudo, ssh, scp, eval |
+| カテゴリ | 説明 | 例 | deny バイパスリスク |
+|----------|------|-----|-----|
+| safe | 読取系・ビルドツール | git status, go test, task, make, brew list | なし |
+| ask | 変更・破壊操作 | git commit, git push, git rebase, rm -rf | なし |
+| deny | 外部通信・特権操作 | curl, wget, sudo, ssh, scp, eval | - |
+| review (bypass) | Read/Write deny バイパス | cat, head, tail, grep, echo, find, sed, awk | あり |
+
+### deny バイパスリスクとは
+
+Claude Code はツールごとに独立してパーミッションを評価する｡`Read(~/.ssh/**)` を deny していても `Bash(cat:*)` を allow すると `cat ~/.ssh/id_rsa` で deny が回避される｡
+
+| Bash コマンド | バイパス対象 | 代替ツール |
+|--------------|-------------|-----------|
+| cat, head, tail, grep, awk | Read deny | Read, Grep ツール |
+| echo, tee, cp, mv | Write deny | Write ツール |
+| find | Read + Write deny (破壊操作含む) | Glob ツール |
+| sed | Read + Write deny | Edit ツール |
+
+**推奨**: Claude Code には Read/Grep/Write/Edit/Glob 等の専用ツールがあり、Bash でのファイル操作は原則不要｡deny バイパスリスクのあるコマンドは allow に含めない｡
 
 ### Read/Write/Edit パス
 

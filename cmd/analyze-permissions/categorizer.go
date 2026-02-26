@@ -16,8 +16,9 @@ const (
 
 // CategoryResult はパターンの分類結果を保持する｡
 type CategoryResult struct {
-	Category Category `json:"category"`
-	Reason   string   `json:"reason"`
+	Category       Category `json:"category"`
+	Reason         string   `json:"reason"`
+	DenyBypassRisk bool     `json:"deny_bypass_risk,omitempty"`
 }
 
 // bashSafePatterns は安全な Bash コマンドのプレフィックスパターン｡
@@ -80,6 +81,27 @@ var bashDenyPatterns = []struct {
 	{func(p string) bool { return p == "scp" || strings.HasPrefix(p, "scp ") }, "リモートコピー"},
 	{func(p string) bool { return p == "eval" || strings.HasPrefix(p, "eval ") }, "任意コード実行"},
 	{func(p string) bool { return matchBashPrefix(p, "gh auth") }, "認証操作"},
+}
+
+// bashDenyBypassPatterns は Read/Write deny をバイパスできる Bash コマンド｡
+// Claude Code はツールごとに独立してパーミッションを評価するため､
+// Bash 経由でファイル操作するとRead/Write の deny が効かない｡
+var bashDenyBypassPatterns = []struct {
+	match  func(pattern string) bool
+	reason string
+	bypass string // "read", "write", or "both"
+}{
+	{func(p string) bool { return p == "cat" || strings.HasPrefix(p, "cat ") }, "ファイル読取 (Read deny バイパス)", "read"},
+	{func(p string) bool { return p == "head" || strings.HasPrefix(p, "head ") }, "ファイル先頭読取 (Read deny バイパス)", "read"},
+	{func(p string) bool { return p == "tail" || strings.HasPrefix(p, "tail ") }, "ファイル末尾読取 (Read deny バイパス)", "read"},
+	{func(p string) bool { return p == "grep" || strings.HasPrefix(p, "grep ") }, "ファイル検索 (Read deny バイパス)", "read"},
+	{func(p string) bool { return p == "find" || strings.HasPrefix(p, "find ") }, "ファイル検索/実行 (Read deny + 破壊操作)", "both"},
+	{func(p string) bool { return p == "echo" || strings.HasPrefix(p, "echo ") }, "テキスト出力 (リダイレクトで Write deny バイパス)", "write"},
+	{func(p string) bool { return p == "sed" || strings.HasPrefix(p, "sed ") }, "ストリーム編集 (Read + Write deny バイパス)", "both"},
+	{func(p string) bool { return p == "awk" || strings.HasPrefix(p, "awk ") }, "テキスト処理 (Read deny バイパス)", "read"},
+	{func(p string) bool { return p == "tee" || strings.HasPrefix(p, "tee ") }, "出力分岐 (Write deny バイパス)", "write"},
+	{func(p string) bool { return p == "cp" || strings.HasPrefix(p, "cp ") }, "ファイルコピー (Write deny バイパス)", "write"},
+	{func(p string) bool { return p == "mv" || strings.HasPrefix(p, "mv ") }, "ファイル移動 (Write deny バイパス)", "write"},
 }
 
 // fileSafePatterns は安全なファイルパスパターン(Read/Write/Edit 共通)｡
@@ -161,6 +183,16 @@ func categorizeBash(pattern string) CategoryResult {
 	for _, p := range bashSafePatterns {
 		if p.match(pattern) {
 			return CategoryResult{Category: CategorySafe, Reason: p.reason}
+		}
+	}
+	// deny バイパスリスクチェック
+	for _, p := range bashDenyBypassPatterns {
+		if p.match(pattern) {
+			return CategoryResult{
+				Category:       CategoryReview,
+				Reason:         p.reason,
+				DenyBypassRisk: true,
+			}
 		}
 	}
 	return CategoryResult{Category: CategoryReview, Reason: "手動確認が必要"}

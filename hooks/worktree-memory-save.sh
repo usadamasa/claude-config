@@ -1,8 +1,8 @@
 #!/bin/bash
-# migrate-worktree-memory.sh
+# worktree-memory-save.sh
 # worktree 削除前に Claude Code auto-memory を親リポジトリの memory パスに移行する
 #
-# Usage: migrate-worktree-memory.sh <worktree-path>
+# Usage: worktree-memory-save.sh <worktree-path>
 #        または環境変数 GIT_WT_WORKTREE_PATH
 
 set -euo pipefail

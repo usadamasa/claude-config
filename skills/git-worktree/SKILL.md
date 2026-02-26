@@ -137,52 +137,55 @@ hook = test -f .envrc && direnv allow || true
 git worktree list
 ```
 
-## worktree 削除前の Claude Code Memory 移行
+## Claude Code フック統合
 
-worktree を削除すると、その worktree に保存された Claude Code の auto-memory (`MEMORY.md`, `SESSION_HANDOFF.md`) が消える。
-`migrate-worktree-memory.sh` を使うと、削除前に親リポジトリの memory path へ自動退避できる。
+Claude Code の `WorktreeCreate` / `WorktreeRemove` フックにより、worktree のメモリライフサイクルが自動管理される。
+
+### メモリシーディング (WorktreeCreate)
+
+`claude --worktree <name>` で worktree を作成すると、親リポジトリの auto-memory が自動的にコピーされる。
+
+**動作フロー:**
+
+1. `worktree-create.sh` が `git wt --nocd <name>` で worktree を作成
+2. `worktree-memory-load.sh` が親の `~/.claude/projects/{parent-enc}/memory/` から worktree の memory にコピー
+3. 新しいセッションが親の MEMORY.md を持った状態で開始される
+
+### メモリセーブ (WorktreeRemove)
+
+worktree セッション終了時に、メモリが親リポジトリに自動退避される。
+
+**動作フロー:**
+
+1. `worktree-remove.sh` が `worktree-memory-save.sh` でメモリをセーブ
+2. `git worktree remove` で worktree を削除 (失敗時は `--force` でリトライ)
+
+### メモリセーブの詳細
+
+- `SESSION_HANDOFF.md`: ブランチ名付きファイル (`SESSION_HANDOFF_{branch}.md`) として親にコピー
+- `MEMORY.md`: 親が存在する場合は `## [Merged from worktree: {branch}] YYYY-MM-DD` ヘッダー付きで末尾に追記、存在しない場合はコピー
 
 ### 手動実行
 
 ```bash
-~/.claude/hooks/migrate-worktree-memory.sh /path/to/worktree
+# メモリロード (親 → worktree)
+~/.claude/hooks/worktree-memory-load.sh /path/to/worktree
+
+# メモリセーブ (worktree → 親)
+~/.claude/hooks/worktree-memory-save.sh /path/to/worktree
 ```
 
-### git-wt deletehook への登録
+### settings.json の設定
 
-`wt.deletehook` に登録することで、`git wt -d <branch>` 実行時に自動で実行される:
+`~/.claude/settings.json` の `hooks` セクションに自動設定される:
 
-```ini
-# ~/.config/git/config または各リポジトリの .git/config
-[wt]
-    deletehook = ~/.claude/hooks/migrate-worktree-memory.sh
-```
-
-**設定例 (推奨設定に追加):**
-
-```ini
-[wt]
-    copyignored = true
-    copyuntracked = true
-    copymodified = true
-    hook = test -f .envrc && direnv allow || true
-    basedir = ../worktrees/{gitroot}
-    deletehook = ~/.claude/hooks/migrate-worktree-memory.sh
-```
-
-### 動作内容
-
-1. worktree の `.git` ファイルから親リポジトリのパスを導出する
-2. 親リポジトリの Claude Code memory path (`~/.claude/projects/.../memory/`) に移行する
-3. `SESSION_HANDOFF.md`: 上書きコピー (最新の引き継ぎ情報を優先)
-4. `MEMORY.md`: 親が存在する場合は末尾に追記、存在しない場合はコピー
-
-追記フォーマット:
-
-```markdown
-## [Merged from worktree: {branch-name}] YYYY-MM-DD
-
-{worktree の MEMORY.md 内容}
+```json
+{
+  "hooks": {
+    "WorktreeCreate": [{ "hooks": [{ "type": "command", "command": "$HOME/.claude/hooks/worktree-create.sh" }] }],
+    "WorktreeRemove": [{ "hooks": [{ "type": "command", "command": "$HOME/.claude/hooks/worktree-remove.sh" }] }]
+  }
+}
 ```
 
 ## 関連リンク

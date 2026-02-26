@@ -1,7 +1,7 @@
 #!/usr/bin/env bats
-# migrate-worktree-memory.sh のテスト
+# worktree-memory-save.sh のテスト
 
-SCRIPT_PATH="$(cd "$(dirname "$BATS_TEST_FILENAME")/.." && pwd)/hooks/migrate-worktree-memory.sh"
+SCRIPT_PATH="$(cd "$(dirname "$BATS_TEST_FILENAME")/.." && pwd)/hooks/worktree-memory-save.sh"
 
 setup() {
   load 'fixtures/worktree-setup.sh'

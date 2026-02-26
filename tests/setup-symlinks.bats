@@ -79,3 +79,66 @@ teardown() {
   # (CLAUDE-global.md は別途処理されるため)
   ! grep -E 'for file in.*CLAUDE\.md' "$REPO_ROOT/Taskfile.yml"
 }
+
+# =============================================================================
+# worktree 環境関連の構造テスト
+# =============================================================================
+
+@test "CLAUDE.md に git rev-parse による worktree 判定の記載がある" {
+  grep -q "git rev-parse --git-dir" "$REPO_ROOT/CLAUDE.md"
+  grep -q "git rev-parse --git-common-dir" "$REPO_ROOT/CLAUDE.md"
+}
+
+@test "CLAUDE.md に worktree 用パス解決 (pwd)/settings.json の記載がある" {
+  grep -q 'pwd)/settings.json' "$REPO_ROOT/CLAUDE.md"
+}
+
+@test "CLAUDE.md に CLI ツールの --settings オプション記載がある" {
+  grep -q '\-\-settings' "$REPO_ROOT/CLAUDE.md"
+}
+
+@test "permission-optimizer に worktree チェックの記載がある" {
+  grep -q "worktree" "$REPO_ROOT/.claude/skills/permission-optimizer/SKILL.md"
+  grep -q 'settings.*pwd' "$REPO_ROOT/.claude/skills/permission-optimizer/SKILL.md"
+}
+
+@test "webfetch-domain-manager に worktree チェックの記載がある" {
+  grep -q "worktree" "$REPO_ROOT/.claude/skills/webfetch-domain-manager/SKILL.md"
+  grep -q 'settings.*pwd' "$REPO_ROOT/.claude/skills/webfetch-domain-manager/SKILL.md"
+}
+
+@test "manage-claude-envs に worktree 用パス (pwd)/env.sh の記載がある" {
+  grep -q 'pwd)/env.sh' "$REPO_ROOT/.claude/skills/manage-claude-envs/skill.md"
+}
+
+# =============================================================================
+# worktree 検出方式の統一テスト (git rev-parse)
+# =============================================================================
+
+@test "CLAUDE-global.md に git rev-parse による worktree 判定の記載がある" {
+  grep -q "git rev-parse --git-dir" "$REPO_ROOT/CLAUDE-global.md"
+  grep -q "git rev-parse --git-common-dir" "$REPO_ROOT/CLAUDE-global.md"
+}
+
+@test "CLAUDE-global.md に cat .git による判定が残っていない" {
+  ! grep -q 'cat \.git' "$REPO_ROOT/CLAUDE-global.md"
+}
+
+@test "finalize-pr スキルに git rev-parse による worktree 判定の記載がある" {
+  grep -q "git rev-parse --git-dir" "$REPO_ROOT/skills/usadamasa-finalize-pr/SKILL.md"
+  grep -q "git rev-parse --git-common-dir" "$REPO_ROOT/skills/usadamasa-finalize-pr/SKILL.md"
+}
+
+@test "finalize-pr スキルに cat .git による判定が残っていない" {
+  ! grep -q 'cat \.git' "$REPO_ROOT/skills/usadamasa-finalize-pr/SKILL.md"
+}
+
+@test "session-handoff スキルに git rev-parse による worktree 判定の記載がある" {
+  grep -q "git rev-parse --git-dir" "$REPO_ROOT/skills/usadamasa-session-handoff/SKILL.md"
+  grep -q "git rev-parse --git-common-dir" "$REPO_ROOT/skills/usadamasa-session-handoff/SKILL.md"
+}
+
+@test "claude-config-management に worktree 環境チェックの記載がある" {
+  grep -q "worktree 環境チェック" "$REPO_ROOT/.claude/skills/claude-config-management/SKILL.md"
+  grep -q "git rev-parse --git-dir" "$REPO_ROOT/.claude/skills/claude-config-management/SKILL.md"
+}

@@ -239,21 +239,31 @@ func countUniqueFiles(results []ScanResult) int {
 	return len(seen)
 }
 
+// resolveProjectsDir は JSONL スキャン対象の projects ディレクトリを決定する｡
+func resolveProjectsDir(projectsDirFlag, home string) string {
+	if projectsDirFlag != "" {
+		return projectsDirFlag
+	}
+	return filepath.Join(home, ".claude", "projects")
+}
+
 func main() {
 	days := flag.Int("days", 30, "集計期間(日数)")
 	settingsPath := flag.String("settings", "", "settings.json パス (デフォルト: ~/.claude/settings.json)")
+	projectsDirFlag := flag.String("projects-dir", "", "projects ディレクトリパス (デフォルト: ~/.claude/projects)")
 	flag.Parse()
 
+	home, err := os.UserHomeDir()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "ホームディレクトリの取得に失敗: %v\n", err)
+		os.Exit(1)
+	}
+
 	if *settingsPath == "" {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "ホームディレクトリの取得に失敗: %v\n", err)
-			os.Exit(1)
-		}
 		*settingsPath = filepath.Join(home, ".claude", "settings.json")
 	}
 
-	projectsDir := filepath.Join(filepath.Dir(*settingsPath), "projects")
+	projectsDir := resolveProjectsDir(*projectsDirFlag, home)
 
 	// Load current allowlist.
 	allowlist, err := LoadAllowlist(*settingsPath)

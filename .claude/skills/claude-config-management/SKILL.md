@@ -58,6 +58,20 @@ task clean    # symlink 削除
 
 `.claude/skills/<skill-name>/SKILL.md` を作成。symlink 不要。
 
+## worktree 環境チェック
+
+worktree 環境では symlink 先がメインリポジトリを指すため、`~/.claude/` 配下の symlink を直接編集してはいけない。
+worktree 判定を行い、`$(pwd)/<file>` を使用すること。
+
+```bash
+GIT_DIR=$(git rev-parse --git-dir)
+GIT_COMMON=$(git rev-parse --git-common-dir)
+# GIT_DIR != GIT_COMMON → worktree 環境
+# GIT_DIR == GIT_COMMON → 通常リポジトリ
+```
+
+詳細は CLAUDE.md の「worktree 環境でのファイルパス解決」を参照。
+
 ## 注意事項
 
 - `ln -sfn` でディレクトリ先に既存ディレクトリがあるとネスト symlink が発生する。

@@ -173,7 +173,7 @@ func TestCategorizePermission(t *testing.T) {
 	}{
 		{"cat", "cat", "read"},
 		{"head", "head", "read"},
-		{"tail", "tail", "tail"},
+		{"tail", "tail", "read"},
 		{"grep", "grep", "read"},
 		{"find", "find", "both"},
 		{"echo", "echo", "write"},

@@ -112,6 +112,24 @@ Claude Code はツールごとに独立してパーミッションを評価す�
 | deny | 機密ファイル | ~/.ssh/**, ~/.aws/**, .env, credentials |
 | review | 手動確認が必要 | 上記に該当しないパス |
 
+## パーミッション集約の注意事項
+
+複数のスコープ付きエントリを1つに集約する場合、意図せずスコープが拡大しないよう注意する。
+
+**悪い例** (スコープ拡大):
+```json
+// Before: .claude ディレクトリのみ
+"Bash(mkdir -p ~/.claude/**)", "Bash(mkdir .claude/**)"
+// After: ファイルシステム全体
+"Bash(mkdir:*)"
+```
+
+**良い例** (スコープ維持):
+```json
+// フォーマット修正のみ、スコープは維持
+"Bash(mkdir -p:*)", "Bash(mkdir .claude:*)", "Bash(mkdir ~/.claude:*)"
+```
+
 ## パーミッション形式
 
 - Bash: `Bash(コマンドプレフィックス:*)` 例: `Bash(git status:*)`

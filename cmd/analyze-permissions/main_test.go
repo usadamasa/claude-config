@@ -146,6 +146,8 @@ func TestMatchPattern(t *testing.T) {
 		{"プレフィックスマッチ (スペース)", "gh pr", "gh", true},
 		{"プレフィックスマッチ (スラッシュ)", "src/main.go", "src", true},
 		{"プレフィックスが部分一致しない", "ghost", "gh", false},
+		{"/** が別プレフィックスに誤マッチしない", "src2/foo", "src/**", false},
+		{"/** が正しいプレフィックスにマッチ", "src/foo", "src/**", true},
 		{"空パターン", "", "", true},
 	}
 

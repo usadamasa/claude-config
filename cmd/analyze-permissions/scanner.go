@@ -58,7 +58,6 @@ var subcommandTools = map[string]bool{
 	"task":   true,
 	"brew":   true,
 	"make":   true,
-	"mkdir":  true,
 }
 
 // ScanJSONLFiles は指定ディレクトリの JSONL ファイルから Bash/Read/Write/Edit

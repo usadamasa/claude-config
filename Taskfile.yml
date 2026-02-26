@@ -31,9 +31,15 @@ tasks:
           echo "  📦 内容をコピーしました: $OLD_TARGET → $HOME/.claude"
         fi
       - mkdir -p "$HOME/.claude/skills"
+      # CLAUDE-global.md → ~/.claude/CLAUDE.md (名前が異なる特殊マッピング)
+      - |
+        if [ -f "{{.TASKFILE_DIR}}/CLAUDE-global.md" ]; then
+          ln -sfn "{{.TASKFILE_DIR}}/CLAUDE-global.md" "$HOME/.claude/CLAUDE.md"
+          echo "  ✓ CLAUDE-global.md → CLAUDE.md"
+        fi
       # トップレベルファイルの symlink
       - |
-        for file in CLAUDE.md settings.json env.sh; do
+        for file in settings.json env.sh; do
           if [ -f "{{.TASKFILE_DIR}}/$file" ]; then
             ln -sfn "{{.TASKFILE_DIR}}/$file" "$HOME/.claude/$file"
             echo "  ✓ $file"
@@ -71,7 +77,7 @@ tasks:
       - |
         echo "Claude設定:"
         echo "  ディレクトリ: $(test -d "$HOME/.claude" && ! test -L "$HOME/.claude" && echo '✓ 実ディレクトリ' || echo '✗')"
-        echo "  CLAUDE.md: $(test -L "$HOME/.claude/CLAUDE.md" && echo '✓' || echo '✗')"
+        echo "  CLAUDE.md (← CLAUDE-global.md): $(test -L "$HOME/.claude/CLAUDE.md" && echo '✓' || echo '✗')"
         echo "  settings.json: $(test -L "$HOME/.claude/settings.json" && echo '✓' || echo '✗')"
         echo "  hooks: $(test -L "$HOME/.claude/hooks" && echo '✓' || echo '✗')"
         echo "  env.sh: $(test -L "$HOME/.claude/env.sh" && echo '✓' || echo '✗')"

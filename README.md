@@ -17,7 +17,7 @@ task setup
 
 | ファイル/ディレクトリ | symlink 先 | 説明 |
 |---|---|---|
-| `CLAUDE.md` | `~/.claude/CLAUDE.md` | グローバル Claude 指示 |
+| `CLAUDE-global.md` | `~/.claude/CLAUDE.md` | グローバル Claude 指示 |
 | `settings.json` | `~/.claude/settings.json` | 権限・モデル設定 |
 | `hooks/` | `~/.claude/hooks` | セッションフック |
 | `skills/usadamasa-*/` | `~/.claude/skills/usadamasa-*/` | グローバルスキル |

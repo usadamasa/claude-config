@@ -27,6 +27,33 @@ teardown() {
   [[ "$(cat "$WORKTREE_MEM/MEMORY.md")" == *"親の MEMORY"* ]]
 }
 
+@test "MEMORY.md コピー後にマーカーが末尾に追記される" {
+  mkdir -p "$PARENT_MEM"
+  echo "# 親の MEMORY" > "$PARENT_MEM/MEMORY.md"
+
+  run bash "$SCRIPT_PATH" "$TEST_WORKTREE"
+
+  [ "$status" -eq 0 ]
+  [ -f "$WORKTREE_MEM/MEMORY.md" ]
+  # 末尾行がマーカーであること
+  local last_line
+  last_line=$(tail -1 "$WORKTREE_MEM/MEMORY.md")
+  [ "$last_line" = "<!-- worktree-memory-loaded -->" ]
+}
+
+@test "MEMORY.md 以外のファイルにはマーカーが付かない" {
+  mkdir -p "$PARENT_MEM"
+  echo "# MEMORY" > "$PARENT_MEM/MEMORY.md"
+  echo "# DEBUG" > "$PARENT_MEM/debugging.md"
+
+  run bash "$SCRIPT_PATH" "$TEST_WORKTREE"
+
+  [ "$status" -eq 0 ]
+  [ -f "$WORKTREE_MEM/debugging.md" ]
+  # debugging.md にマーカーが含まれないこと
+  ! grep -q "<!-- worktree-memory-loaded -->" "$WORKTREE_MEM/debugging.md"
+}
+
 @test "親に複数ファイル存在: 全てコピーされる" {
   mkdir -p "$PARENT_MEM"
   echo "# MEMORY" > "$PARENT_MEM/MEMORY.md"
@@ -140,6 +167,22 @@ teardown() {
 
   [ "$status" -eq 0 ]
   [ ! -f "$WORKTREE_MEM/MEMORY.md" ]
+}
+
+@test "dry-run: マーカーが追記されない" {
+  mkdir -p "$PARENT_MEM"
+  echo "# MEMORY" > "$PARENT_MEM/MEMORY.md"
+  # worktree memory ディレクトリは存在するがファイルなし
+  rm -rf "$WORKTREE_MEM"
+  mkdir -p "$WORKTREE_MEM"
+
+  run env DRY_RUN=1 bash "$SCRIPT_PATH" "$TEST_WORKTREE"
+
+  [ "$status" -eq 0 ]
+  # dry-run なのでファイル自体が存在しない
+  [ ! -f "$WORKTREE_MEM/MEMORY.md" ]
+  # MARKER ログが出力されること
+  [[ "$output" == *"MARKER"* ]]
 }
 
 @test "dry-run: [DRY-RUN] プレフィックスでログが出力される" {

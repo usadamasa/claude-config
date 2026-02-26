@@ -66,24 +66,79 @@ teardown() {
 @test "worktree: 親 MEMORY.md が存在する場合は末尾に追記" {
   mkdir -p "$PARENT_MEM"
   echo "# 既存の親 MEMORY" > "$PARENT_MEM/MEMORY.md"
-  echo "# ワークツリー MEMORY" > "$WORKTREE_MEM/MEMORY.md"
+  # マーカー付きの worktree MEMORY.md (load 済み状態を再現)
+  printf "# 既存の親 MEMORY\n\n<!-- worktree-memory-loaded -->\n# ワークツリー追記" > "$WORKTREE_MEM/MEMORY.md"
 
   run bash "$SCRIPT_PATH" "$TEST_WORKTREE"
 
   [ "$status" -eq 0 ]
   [[ "$(cat "$PARENT_MEM/MEMORY.md")" == *"既存の親 MEMORY"* ]]
-  [[ "$(cat "$PARENT_MEM/MEMORY.md")" == *"ワークツリー MEMORY"* ]]
+  [[ "$(cat "$PARENT_MEM/MEMORY.md")" == *"ワークツリー追記"* ]]
 }
 
 @test "追記フォーマット: ## [Merged from worktree: {branch}] ヘッダーが付く" {
   mkdir -p "$PARENT_MEM"
   echo "# 既存の親 MEMORY" > "$PARENT_MEM/MEMORY.md"
-  echo "# ワークツリー MEMORY" > "$WORKTREE_MEM/MEMORY.md"
+  # マーカー付きの worktree MEMORY.md
+  printf "# 既存の親 MEMORY\n\n<!-- worktree-memory-loaded -->\n# ワークツリー追記" > "$WORKTREE_MEM/MEMORY.md"
 
   run bash "$SCRIPT_PATH" "$TEST_WORKTREE"
 
   [ "$status" -eq 0 ]
   [[ "$(cat "$PARENT_MEM/MEMORY.md")" == *"## [Merged from worktree: feature]"* ]]
+}
+
+# =============================================================================
+# マーカーベースの差分追記
+# =============================================================================
+
+@test "マーカー付き MEMORY.md: 差分のみ親に追記される" {
+  mkdir -p "$PARENT_MEM"
+  echo "# 既存の親 MEMORY" > "$PARENT_MEM/MEMORY.md"
+  # マーカー前 = load 時にコピーされた内容、マーカー後 = worktree で追記した新規内容
+  printf "# 既存の親 MEMORY\n\n<!-- worktree-memory-loaded -->\n# 新規追記\nworktree で学んだこと" > "$WORKTREE_MEM/MEMORY.md"
+
+  run bash "$SCRIPT_PATH" "$TEST_WORKTREE"
+
+  [ "$status" -eq 0 ]
+  # 親に新規内容が追記されていること
+  [[ "$(cat "$PARENT_MEM/MEMORY.md")" == *"新規追記"* ]]
+  [[ "$(cat "$PARENT_MEM/MEMORY.md")" == *"worktree で学んだこと"* ]]
+  # マーカー前の内容 (既存の親 MEMORY) が二重にならないこと
+  local count
+  count=$(grep -c "既存の親 MEMORY" "$PARENT_MEM/MEMORY.md")
+  [ "$count" -eq 1 ]
+}
+
+@test "マーカー付き MEMORY.md: 新規追加なしの場合はスキップ" {
+  mkdir -p "$PARENT_MEM"
+  echo "# 既存の親 MEMORY" > "$PARENT_MEM/MEMORY.md"
+  # マーカーで終わっている (追記なし)
+  printf "# 既存の親 MEMORY\n\n<!-- worktree-memory-loaded -->" > "$WORKTREE_MEM/MEMORY.md"
+
+  run bash "$SCRIPT_PATH" "$TEST_WORKTREE"
+
+  [ "$status" -eq 0 ]
+  # 親 MEMORY.md が変更されていないこと
+  [[ "$(cat "$PARENT_MEM/MEMORY.md")" == "# 既存の親 MEMORY" ]]
+  # SKIP ログが出力されること
+  [[ "$output" == *"SKIP"* ]]
+}
+
+@test "親 MEMORY.md が存在しない + マーカー付き: マーカーを除去してコピー" {
+  # 親 MEMORY.md は存在しない
+  # worktree にはマーカー付き MEMORY.md + 新規内容
+  printf "# ロードされた内容\n\n<!-- worktree-memory-loaded -->\n# 新規追記" > "$WORKTREE_MEM/MEMORY.md"
+
+  run bash "$SCRIPT_PATH" "$TEST_WORKTREE"
+
+  [ "$status" -eq 0 ]
+  [ -f "$PARENT_MEM/MEMORY.md" ]
+  # マーカー行が除去されていること
+  ! grep -q "<!-- worktree-memory-loaded -->" "$PARENT_MEM/MEMORY.md"
+  # 内容は保持されること
+  [[ "$(cat "$PARENT_MEM/MEMORY.md")" == *"ロードされた内容"* ]]
+  [[ "$(cat "$PARENT_MEM/MEMORY.md")" == *"新規追記"* ]]
 }
 
 # =============================================================================
@@ -156,7 +211,8 @@ teardown() {
 @test "通常モード: MEMORY.md 追記時に APPEND ログが出力される" {
   mkdir -p "$PARENT_MEM"
   echo "# 既存の親 MEMORY" > "$PARENT_MEM/MEMORY.md"
-  echo "# ワークツリー MEMORY" > "$WORKTREE_MEM/MEMORY.md"
+  # マーカー付きの worktree MEMORY.md
+  printf "# 既存の親 MEMORY\n\n<!-- worktree-memory-loaded -->\n# ワークツリー追記" > "$WORKTREE_MEM/MEMORY.md"
 
   run bash "$SCRIPT_PATH" "$TEST_WORKTREE"
 
@@ -192,7 +248,8 @@ teardown() {
 @test "dry-run: MEMORY.md 追記時に APPEND メッセージが出力される" {
   mkdir -p "$PARENT_MEM"
   echo "# 既存の親 MEMORY" > "$PARENT_MEM/MEMORY.md"
-  echo "# ワークツリー MEMORY" > "$WORKTREE_MEM/MEMORY.md"
+  # マーカー付きの worktree MEMORY.md
+  printf "# 既存の親 MEMORY\n\n<!-- worktree-memory-loaded -->\n# ワークツリー追記" > "$WORKTREE_MEM/MEMORY.md"
 
   run env DRY_RUN=1 bash "$SCRIPT_PATH" "$TEST_WORKTREE"
 

@@ -64,7 +64,16 @@ fi
 logged_mkdir "$WORKTREE_MEM"
 
 # 親 memory の全ファイルを worktree にコピー (各ファイルごとにログ出力)
+MEMORY_MARKER="<!-- worktree-memory-loaded -->"
 for f in "$PARENT_MEM/"*; do
   [ -f "$f" ] || continue
   logged_cp "$f" "$WORKTREE_MEM/$(basename "$f")"
+  # MEMORY.md にのみロードマーカーを追記
+  if [ "$(basename "$f")" = "MEMORY.md" ]; then
+    if is_dry_run; then
+      log_info "MARKER $WORKTREE_MEM/MEMORY.md"
+    else
+      { echo ""; echo "$MEMORY_MARKER"; } >> "$WORKTREE_MEM/MEMORY.md"
+    fi
+  fi
 done

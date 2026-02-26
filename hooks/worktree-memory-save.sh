@@ -80,29 +80,58 @@ if [ -f "$WORKTREE_MEM/SESSION_HANDOFF.md" ]; then
   logged_cp "$WORKTREE_MEM/SESSION_HANDOFF.md" "$PARENT_MEM/SESSION_HANDOFF_${BRANCH_NAME}.md"
 fi
 
-# MEMORY.md: 親が存在する場合は末尾に追記、存在しない場合はコピー
+# MEMORY.md: マーカーベースの差分追記
+MEMORY_MARKER="<!-- worktree-memory-loaded -->"
 if [ -f "$WORKTREE_MEM/MEMORY.md" ]; then
-  if [ -f "$PARENT_MEM/MEMORY.md" ]; then
-    DATE=$(date +%Y-%m-%d)
-    HEADER="## [Merged from worktree: $BRANCH_NAME] $DATE"
-    if is_dry_run; then
-      echo "$(_log_prefix) APPEND header '$HEADER' -> $PARENT_MEM/MEMORY.md" >&2
-    else
-      echo "$(_log_prefix) APPEND header '$HEADER' -> $PARENT_MEM/MEMORY.md" >&2
-      {
-        echo ""
-        echo "$HEADER"
-        echo ""
-        cat "$WORKTREE_MEM/MEMORY.md"
-      } >> "$PARENT_MEM/MEMORY.md"
+  # マーカーの有無を確認
+  HAS_MARKER=false
+  grep -q "^${MEMORY_MARKER}$" "$WORKTREE_MEM/MEMORY.md" && HAS_MARKER=true
 
-      # MEMORY.md サイズ警告 (Claude Code は 200 行以降を切り捨てる)
-      LINE_COUNT=$(wc -l < "$PARENT_MEM/MEMORY.md")
-      if [ "$LINE_COUNT" -gt 150 ]; then
-        log_info "WARNING: MEMORY.md is ${LINE_COUNT} lines. Claude Code truncates after 200 lines. Consider manual cleanup."
+  if [ -f "$PARENT_MEM/MEMORY.md" ]; then
+    # 親が存在する場合: 差分のみ追記
+    if [ "$HAS_MARKER" = true ]; then
+      # マーカー以降の内容を抽出
+      NEW_CONTENT=$(sed "1,/^${MEMORY_MARKER}$/d" "$WORKTREE_MEM/MEMORY.md")
+    else
+      # マーカーなし (後方互換): 全内容を使用
+      NEW_CONTENT=$(cat "$WORKTREE_MEM/MEMORY.md")
+    fi
+
+    # 空白のみなら追記スキップ
+    if [ -z "$(echo "$NEW_CONTENT" | sed '/^[[:space:]]*$/d')" ]; then
+      log_skip "worktree MEMORY.md に新規追加なし"
+    else
+      DATE=$(date +%Y-%m-%d)
+      HEADER="## [Merged from worktree: $BRANCH_NAME] $DATE"
+      if is_dry_run; then
+        echo "$(_log_prefix) APPEND header '$HEADER' -> $PARENT_MEM/MEMORY.md" >&2
+      else
+        echo "$(_log_prefix) APPEND header '$HEADER' -> $PARENT_MEM/MEMORY.md" >&2
+        {
+          echo ""
+          echo "$HEADER"
+          echo ""
+          echo "$NEW_CONTENT"
+        } >> "$PARENT_MEM/MEMORY.md"
+
+        # MEMORY.md サイズ警告 (Claude Code は 200 行以降を切り捨てる)
+        LINE_COUNT=$(wc -l < "$PARENT_MEM/MEMORY.md")
+        if [ "$LINE_COUNT" -gt 150 ]; then
+          log_info "WARNING: MEMORY.md is ${LINE_COUNT} lines. Claude Code truncates after 200 lines. Consider manual cleanup."
+        fi
       fi
     fi
   else
-    logged_cp "$WORKTREE_MEM/MEMORY.md" "$PARENT_MEM/MEMORY.md"
+    # 親が存在しない場合: マーカー行を除去してコピー
+    if [ "$HAS_MARKER" = true ]; then
+      if is_dry_run; then
+        echo "$(_log_prefix) CP     $WORKTREE_MEM/MEMORY.md -> $PARENT_MEM/MEMORY.md (marker stripped)" >&2
+      else
+        echo "$(_log_prefix) CP     $WORKTREE_MEM/MEMORY.md -> $PARENT_MEM/MEMORY.md (marker stripped)" >&2
+        sed "/^${MEMORY_MARKER}$/d" "$WORKTREE_MEM/MEMORY.md" > "$PARENT_MEM/MEMORY.md"
+      fi
+    else
+      logged_cp "$WORKTREE_MEM/MEMORY.md" "$PARENT_MEM/MEMORY.md"
+    fi
   fi
 fi

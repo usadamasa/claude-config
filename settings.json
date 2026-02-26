@@ -55,15 +55,15 @@
       "Bash(golangci-lint:*)",
       "Bash(ls:*)",
       "Bash(make:*)",
-      "Bash(mkdir -p ~/.claude/**)",
-      "Bash(mkdir -p .claude/**)",
-      "Bash(mkdir ~/.claude/**)",
-      "Bash(mkdir .claude/**)",
+      "Bash(mkdir:*)",
       "Bash(pre-commit:*)",
+      "Bash(pwd:*)",
       "Bash(ruff:*)",
       "Bash(task:*)",
       "Bash(tree:*)",
       "Bash(uv:*)",
+      "Bash(wc:*)",
+      "Bash(which:*)",
       "Edit(~/.claude/**)",
       "Edit(~/src/github.com/**)",
       "Fetch(domain:*.databricks.com)",
@@ -106,8 +106,7 @@
       "WebFetch(domain:www.oreilly.co.jp)",
       "WebSearch",
       "Write(~/.claude/**)",
-      "Write(~/src/github.com/**)",
-      "Write(.tmp/**)"
+      "Write(~/src/github.com/**)"
     ],
     "deny": [
       "Bash(curl:*)",
@@ -138,6 +137,7 @@
       "Write(.env)"
     ],
     "ask": [
+      "Bash(diff:*)",
       "Bash(brew install:*)",
       "Bash(git config:*)",
       "Bash(git rebase:*)",

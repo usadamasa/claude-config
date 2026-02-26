@@ -93,6 +93,12 @@ func MatchesPermission(toolName, pattern string, permissions []string) bool {
 			return true
 		}
 
+		// プレフィックスマッチ (Bash の :* 形式に対応)
+		// "gh" は "gh pr" にマッチ、"src" は "src/main.go" にマッチ
+		if strings.HasPrefix(pattern, permPattern+" ") || strings.HasPrefix(pattern, permPattern+"/") {
+			return true
+		}
+
 		// ワイルドカードマッチ: "~/.claude/**" は "~/.claude/skills/foo" にマッチ
 		if strings.HasSuffix(permPattern, "/**") {
 			prefix := permPattern[:len(permPattern)-3]

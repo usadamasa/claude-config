@@ -165,11 +165,60 @@ func TestCategorizePermission(t *testing.T) {
 		}
 	})
 
+	// Bash: deny バイパスリスク (review カテゴリ + DenyBypassRisk フラグ)
+	bashDenyBypassTests := []struct {
+		name    string
+		pattern string
+		bypass  string // "read", "write", or "both"
+	}{
+		{"cat", "cat", "read"},
+		{"head", "head", "read"},
+		{"tail", "tail", "read"},
+		{"grep", "grep", "read"},
+		{"find", "find", "both"},
+		{"echo", "echo", "write"},
+		{"sed", "sed", "both"},
+		{"awk", "awk", "read"},
+		{"tee", "tee", "write"},
+		{"cp", "cp", "write"},
+		{"mv", "mv", "write"},
+	}
+	for _, tt := range bashDenyBypassTests {
+		t.Run("Bash/deny_bypass/"+tt.name, func(t *testing.T) {
+			result := CategorizePermission("Bash", tt.pattern)
+			if result.Category != CategoryReview {
+				t.Errorf("CategorizePermission(Bash, %q) = %s, want review", tt.pattern, result.Category)
+			}
+			if !result.DenyBypassRisk {
+				t.Errorf("CategorizePermission(Bash, %q).DenyBypassRisk = false, want true", tt.pattern)
+			}
+		})
+	}
+
+	// deny バイパスリスクがないコマンドは DenyBypassRisk = false
+	t.Run("Bash/no_deny_bypass/pwd", func(t *testing.T) {
+		result := CategorizePermission("Bash", "pwd")
+		if result.DenyBypassRisk {
+			t.Errorf("CategorizePermission(Bash, pwd).DenyBypassRisk = true, want false")
+		}
+	})
+
+	// safe コマンドは DenyBypassRisk = false
+	t.Run("Bash/safe/no_deny_bypass", func(t *testing.T) {
+		result := CategorizePermission("Bash", "git status")
+		if result.DenyBypassRisk {
+			t.Errorf("CategorizePermission(Bash, git status).DenyBypassRisk = true, want false")
+		}
+	})
+
 	// 未知のパターンは review
 	t.Run("Bash/review/未知のコマンド", func(t *testing.T) {
 		result := CategorizePermission("Bash", "unknown-cmd")
 		if result.Category != CategoryReview {
 			t.Errorf("CategorizePermission(Bash, unknown-cmd) = %s, want review", result.Category)
+		}
+		if result.DenyBypassRisk {
+			t.Errorf("unknown-cmd の DenyBypassRisk は false であるべき")
 		}
 	})
 

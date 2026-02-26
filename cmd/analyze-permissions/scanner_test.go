@@ -229,6 +229,8 @@ func TestExtractBashPrefix(t *testing.T) {
 		{"空コマンド", "", ""},
 		{"rm -rf", "rm -rf /tmp/test", "rm -rf"},
 		{"make ターゲット", "make build", "make build"},
+		{"mkdir -p", "mkdir -p /tmp/test/dir", "mkdir"},
+		{"mkdir 単純", "mkdir /tmp/test", "mkdir"},
 	}
 
 	for _, tt := range tests {

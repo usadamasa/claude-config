@@ -133,6 +133,95 @@ func TestGenerateReport(t *testing.T) {
 	})
 }
 
+func TestMatchPattern(t *testing.T) {
+	tests := []struct {
+		name        string
+		scanPattern string
+		permPattern string
+		want        bool
+	}{
+		{"完全一致", "git status", "git status", true},
+		{"不一致", "git status", "go test", false},
+		{"/** ワイルドカード", "~/.claude/skills/foo", "~/.claude/**", true},
+		{"プレフィックスマッチ (スペース)", "gh pr", "gh", true},
+		{"プレフィックスマッチ (スラッシュ)", "src/main.go", "src", true},
+		{"プレフィックスが部分一致しない", "ghost", "gh", false},
+		{"/** が別プレフィックスに誤マッチしない", "src2/foo", "src/**", false},
+		{"/** が正しいプレフィックスにマッチ", "src/foo", "src/**", true},
+		{"空パターン", "", "", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := matchPattern(tt.scanPattern, tt.permPattern)
+			if got != tt.want {
+				t.Errorf("matchPattern(%q, %q) = %v, want %v", tt.scanPattern, tt.permPattern, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestGenerateReportDenyBypassWarnings(t *testing.T) {
+	t.Run("Bash cat が Read deny をバイパスする警告", func(t *testing.T) {
+		scanResults := []ScanResult{
+			{ToolName: "Bash", Pattern: "cat", FilePath: "a.jsonl"},
+		}
+		allow := []string{"Bash(cat:*)"}
+		deny := []string{"Read(~/.ssh/**)"}
+
+		report := GenerateReport(scanResults, allow, deny, nil, 30, 1)
+
+		if len(report.Recommendations.DenyBypassWarnings) == 0 {
+			t.Error("DenyBypassWarnings が空")
+		}
+		found := false
+		for _, w := range report.Recommendations.DenyBypassWarnings {
+			if w.AllowEntry == "Bash(cat:*)" && w.BypassedDeny == "Read(~/.ssh/**)" {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("cat → Read(~/.ssh/**) バイパス警告が見つからない: %+v", report.Recommendations.DenyBypassWarnings)
+		}
+	})
+
+	t.Run("echo が Write deny をバイパスする警告", func(t *testing.T) {
+		scanResults := []ScanResult{
+			{ToolName: "Bash", Pattern: "echo", FilePath: "a.jsonl"},
+		}
+		allow := []string{"Bash(echo:*)"}
+		deny := []string{"Write(.env)"}
+
+		report := GenerateReport(scanResults, allow, deny, nil, 30, 1)
+
+		found := false
+		for _, w := range report.Recommendations.DenyBypassWarnings {
+			if w.AllowEntry == "Bash(echo:*)" {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Error("echo → Write(.env) バイパス警告が見つからない")
+		}
+	})
+
+	t.Run("安全なコマンドにはバイパス警告なし", func(t *testing.T) {
+		scanResults := []ScanResult{
+			{ToolName: "Bash", Pattern: "git status", FilePath: "a.jsonl"},
+		}
+		allow := []string{"Bash(git status:*)"}
+		deny := []string{"Read(~/.ssh/**)"}
+
+		report := GenerateReport(scanResults, allow, deny, nil, 30, 1)
+
+		if len(report.Recommendations.DenyBypassWarnings) != 0 {
+			t.Errorf("安全なコマンドに対してバイパス警告がある: %+v", report.Recommendations.DenyBypassWarnings)
+		}
+	})
+}
+
 func TestCountUniqueFiles(t *testing.T) {
 	results := []ScanResult{
 		{FilePath: "a.jsonl"},

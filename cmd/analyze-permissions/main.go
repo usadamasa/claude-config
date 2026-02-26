@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -30,10 +31,18 @@ type ReportMetadata struct {
 
 // Recommendations はカテゴリ別の推奨事項を含む｡
 type Recommendations struct {
-	Add               []PatternRecommendation `json:"add"`
-	Review            []PatternRecommendation `json:"review"`
-	Unused            []UnusedEntry           `json:"unused"`
-	BareEntryWarnings []string                `json:"bare_entry_warnings,omitempty"`
+	Add                []PatternRecommendation `json:"add"`
+	Review             []PatternRecommendation `json:"review"`
+	Unused             []UnusedEntry           `json:"unused"`
+	BareEntryWarnings  []string                `json:"bare_entry_warnings,omitempty"`
+	DenyBypassWarnings []DenyBypassWarning     `json:"deny_bypass_warnings,omitempty"`
+}
+
+// DenyBypassWarning は allow の Bash コマンドが deny の Read/Write をバイパスするリスク｡
+type DenyBypassWarning struct {
+	AllowEntry   string `json:"allow_entry"`
+	BypassedDeny string `json:"bypassed_deny"`
+	Risk         string `json:"risk"`
 }
 
 // PatternRecommendation は追加または確認が推奨されるパターン｡
@@ -162,6 +171,9 @@ func GenerateReport(scanResults []ScanResult, allow, deny, ask []string, days, f
 	checkUnused(deny, "deny")
 	checkUnused(ask, "ask")
 
+	// deny バイパスリスクのクロスチェック
+	denyBypassWarnings := detectDenyBypassWarnings(allow, deny)
+
 	// ソート
 	sort.Slice(allPatterns, func(i, j int) bool { return allPatterns[i].Count > allPatterns[j].Count })
 	sort.Slice(addRecs, func(i, j int) bool { return addRecs[i].Count > addRecs[j].Count })
@@ -178,12 +190,68 @@ func GenerateReport(scanResults []ScanResult, allow, deny, ask []string, days, f
 		CurrentDeny:  deny,
 		CurrentAsk:   ask,
 		Recommendations: Recommendations{
-			Add:               addRecs,
-			Review:            reviewRecs,
-			Unused:            unusedRecs,
-			BareEntryWarnings: bareWarnings,
+			Add:                addRecs,
+			Review:             reviewRecs,
+			Unused:             unusedRecs,
+			BareEntryWarnings:  bareWarnings,
+			DenyBypassWarnings: denyBypassWarnings,
 		},
 		AllPatterns: allPatterns,
+	}
+}
+
+// getDenyBypassType は Bash コマンドパターンの deny バイパスタイプを返す｡
+func getDenyBypassType(pattern string) string {
+	for _, p := range bashDenyBypassPatterns {
+		if p.match(pattern) {
+			return p.bypass
+		}
+	}
+	return ""
+}
+
+// detectDenyBypassWarnings は allow の Bash コマンドが deny の Read/Write をバイパスできるか検出する｡
+func detectDenyBypassWarnings(allow, deny []string) []DenyBypassWarning {
+	var warnings []DenyBypassWarning
+	for _, allowEntry := range allow {
+		tool, pattern, ok := ParsePermissionEntry(allowEntry)
+		if !ok || tool != "Bash" {
+			continue
+		}
+		cat := CategorizePermission("Bash", pattern)
+		if !cat.DenyBypassRisk {
+			continue
+		}
+		// deny リストの Read/Write エントリとクロスチェック
+		bypassType := getDenyBypassType(pattern)
+		for _, denyEntry := range deny {
+			denyTool, _, denyOk := ParsePermissionEntry(denyEntry)
+			if !denyOk {
+				continue
+			}
+			if matchesBypassType(bypassType, denyTool) {
+				warnings = append(warnings, DenyBypassWarning{
+					AllowEntry:   allowEntry,
+					BypassedDeny: denyEntry,
+					Risk:         cat.Reason,
+				})
+			}
+		}
+	}
+	return warnings
+}
+
+// matchesBypassType は bypass タイプと deny ツール名の組み合わせがマッチするか判定する｡
+func matchesBypassType(bypassType, denyTool string) bool {
+	switch bypassType {
+	case "read":
+		return denyTool == "Read"
+	case "write":
+		return denyTool == "Write"
+	case "both":
+		return denyTool == "Read" || denyTool == "Write"
+	default:
+		return false
 	}
 }
 
@@ -192,10 +260,15 @@ func matchPattern(scanPattern, permPattern string) bool {
 	if scanPattern == permPattern {
 		return true
 	}
+	// プレフィックスマッチ (Bash の :* 形式に対応)
+	// "gh" は "gh pr" にマッチ、"src" は "src/main.go" にマッチ
+	if strings.HasPrefix(scanPattern, permPattern+" ") || strings.HasPrefix(scanPattern, permPattern+"/") {
+		return true
+	}
 	// ワイルドカードマッチ
 	if len(permPattern) > 3 && permPattern[len(permPattern)-3:] == "/**" {
 		prefix := permPattern[:len(permPattern)-3]
-		return len(scanPattern) > len(prefix) && scanPattern[:len(prefix)] == prefix
+		return strings.HasPrefix(scanPattern, prefix+"/") || scanPattern == prefix
 	}
 	return false
 }
@@ -211,19 +284,31 @@ func countUniqueFiles(results []ScanResult) int {
 
 func main() {
 	days := flag.Int("days", 30, "集計期間(日数)")
-	settingsPath := flag.String("settings", "", "settings.json パス (デフォルト: ~/.claude/settings.json)")
+	settingsPath := flag.String("settings", "", "settings.json パス (デフォルト: git ルートの settings.json または ~/.claude/settings.json)")
 	flag.Parse()
 
-	if *settingsPath == "" {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "ホームディレクトリの取得に失敗: %v\n", err)
-			os.Exit(1)
-		}
-		*settingsPath = filepath.Join(home, ".claude", "settings.json")
+	home, err := os.UserHomeDir()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "ホームディレクトリの取得に失敗: %v\n", err)
+		os.Exit(1)
 	}
 
-	projectsDir := filepath.Join(filepath.Dir(*settingsPath), "projects")
+	if *settingsPath == "" {
+		cwd, err := os.Getwd()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "カレントディレクトリの取得に失敗: %v\n", err)
+			os.Exit(1)
+		}
+		resolved, err := resolveSettingsPath(cwd, home)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+			os.Exit(1)
+		}
+		*settingsPath = resolved
+	}
+
+	// JSONL セッションログは常に ~/.claude/projects/ を走査
+	projectsDir := filepath.Join(home, ".claude", "projects")
 
 	// パーミッション読み込み
 	allow, deny, ask, err := LoadPermissions(*settingsPath)

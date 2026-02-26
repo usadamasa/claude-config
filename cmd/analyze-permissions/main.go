@@ -278,19 +278,31 @@ func countUniqueFiles(results []ScanResult) int {
 
 func main() {
 	days := flag.Int("days", 30, "集計期間(日数)")
-	settingsPath := flag.String("settings", "", "settings.json パス (デフォルト: ~/.claude/settings.json)")
+	settingsPath := flag.String("settings", "", "settings.json パス (デフォルト: git ルートの settings.json または ~/.claude/settings.json)")
 	flag.Parse()
 
-	if *settingsPath == "" {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "ホームディレクトリの取得に失敗: %v\n", err)
-			os.Exit(1)
-		}
-		*settingsPath = filepath.Join(home, ".claude", "settings.json")
+	home, err := os.UserHomeDir()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "ホームディレクトリの取得に失敗: %v\n", err)
+		os.Exit(1)
 	}
 
-	projectsDir := filepath.Join(filepath.Dir(*settingsPath), "projects")
+	if *settingsPath == "" {
+		cwd, err := os.Getwd()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "カレントディレクトリの取得に失敗: %v\n", err)
+			os.Exit(1)
+		}
+		resolved, err := resolveSettingsPath(cwd, home)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+			os.Exit(1)
+		}
+		*settingsPath = resolved
+	}
+
+	// JSONL セッションログは常に ~/.claude/projects/ を走査
+	projectsDir := filepath.Join(home, ".claude", "projects")
 
 	// パーミッション読み込み
 	allow, deny, ask, err := LoadPermissions(*settingsPath)

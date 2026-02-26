@@ -24,7 +24,7 @@ go run ./cmd/analyze-permissions --days 30
 
 オプション:
 - `--days N`: 集計期間を指定(デフォルト: 30日)
-- `--settings PATH`: settings.jsonのパスを指定(デフォルト: ~/.claude/settings.json)
+- `--settings PATH`: settings.jsonのパスを指定(デフォルト: gitルートのsettings.json、なければ~/.claude/settings.json)
 
 ### 2. 結果の確認
 

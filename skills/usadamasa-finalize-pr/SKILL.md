@@ -119,11 +119,11 @@ gh pr merge --merge
 worktree 環境かどうかを判定する:
 
 ```bash
-cat .git
+GIT_DIR=$(git rev-parse --git-dir)
+GIT_COMMON=$(git rev-parse --git-common-dir)
+# GIT_DIR != GIT_COMMON → worktree 環境
+# GIT_DIR == GIT_COMMON → 通常環境 (クリーンアップ不要、Step 7 へ)
 ```
-
-- **`.git` がファイル** (内容が `gitdir: ...`) → worktree 環境
-- **`.git` がディレクトリ** → 通常環境 (クリーンアップ不要、Step 7 へ)
 
 worktree 環境の場合:
 
@@ -132,9 +132,9 @@ worktree 環境の場合:
    WORKTREE_PATH=$(pwd)
    ```
 
-2. main worktree (bare repo) のパスを取得:
+2. main worktree (通常リポジトリ + git worktree の親) のパスを取得:
    ```bash
-   MAIN_WORKTREE=$(git worktree list --porcelain | head -1 | sed 's/worktree //')
+   MAIN_WORKTREE=$(git rev-parse --git-common-dir | xargs dirname)
    ```
 
 3. ユーザーに worktree 削除を案内する:

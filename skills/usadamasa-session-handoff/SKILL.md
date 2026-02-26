@@ -84,28 +84,21 @@ PLAN.md が存在する場合は、その進捗状態も確認する。
 
 #### worktree 環境の検出と親 memory への保存
 
-まず `.git` がファイルかディレクトリかを確認し、worktree 環境かどうかを判定する:
+`git rev-parse` で worktree 環境かどうかを判定する:
 
 ```bash
-# .git がファイルなら worktree 環境
-cat .git
-# → "gitdir: /path/to/.git/worktrees/feature" なら worktree
-# → ディレクトリなら通常のリポジトリ
+GIT_DIR=$(git rev-parse --git-dir)
+GIT_COMMON=$(git rev-parse --git-common-dir)
+# GIT_DIR != GIT_COMMON → worktree 環境
+# GIT_DIR == GIT_COMMON → 通常のリポジトリ
 ```
 
 **worktree 環境の場合、2か所に保存する:**
 
 ```bash
-# .git ファイルから gitdir を取得
-GIT_DIR=$(sed 's/^gitdir: //' .git | tr -d '\n')
-
-# ブランチ名を取得 (親 memory のファイル名に使う)
-BRANCH_NAME=$(sed 's|ref: refs/heads/||' "$GIT_DIR/HEAD" | tr -d '\n')
-
-# commondir から親 .git ディレクトリを特定
-COMMON_REL=$(cat "$GIT_DIR/commondir" | tr -d '\n')
-# 相対パスを絶対パスに変換
-COMMON_ABS="$(cd "$GIT_DIR" && cd "$COMMON_REL" && pwd)"
+GIT_DIR=$(git rev-parse --git-dir)
+BRANCH_NAME=$(git branch --show-current)
+COMMON_ABS=$(git rev-parse --git-common-dir | xargs realpath)
 PARENT_ROOT="$(dirname "$COMMON_ABS")"
 
 # パスエンコード: / . _ を - に変換

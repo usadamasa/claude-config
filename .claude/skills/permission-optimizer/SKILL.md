@@ -14,12 +14,23 @@ settings.jsonの`permissions.allow`/`permissions.deny`/`permissions.ask`に登�
 
 ## ワークフロー
 
+### 0. worktree 環境チェック
+
+CLAUDE.md の「worktree 環境でのファイルパス解決」を参照し、worktree 判定を行う。
+worktree 環境の場合、以降のステップで settings.json のパスを `$(pwd)/settings.json` に読み替えること。
+
 ### 1. 分析の実行
 
 以下のコマンドを実行してツール使用状況を集計する:
 
+**通常リポジトリ:**
 ```bash
 go run ./cmd/analyze-permissions --days 30
+```
+
+**worktree 環境:**
+```bash
+go run ./cmd/analyze-permissions --days 30 --settings $(pwd)/settings.json --projects-dir ~/.claude/projects
 ```
 
 オプション:

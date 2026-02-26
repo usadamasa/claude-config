@@ -10,7 +10,14 @@ description: >-
 
 # Claude Code 環境変数管理
 
-## 対象ファイル
+### 0. worktree 環境チェック
+
+CLAUDE.md の「worktree 環境でのファイルパス解決」を参照し、worktree 判定を行う。
+worktree 環境の場合、`env.sh` の編集パスを `$(pwd)/env.sh` に読み替えること。
+`env.sh` には `--settings` 相当のフラグがないため、Edit ツールで直接 `$(pwd)/env.sh` を指定する。
+`env.sh.example` は worktree でも通常でも `$(pwd)/env.sh.example` で変更不要。
+
+### 対象ファイル
 
 - `env.sh` - 実際の環境変数ファイル (.gitignore 対象)
 - `env.sh.example` - テンプレート (リポジトリ管理下)

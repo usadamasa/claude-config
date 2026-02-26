@@ -57,9 +57,13 @@ Before proposing any infrastructure changes, confirm:
 
 git 操作 (commit, push, PR作成など) を行う前に、**必ず以下の環境チェックを実行する**:
 
-1. `cat .git` で worktree 環境かどうかを判定する
-   - ファイルで `gitdir: ...` が返る → **worktree 環境**
-   - ディレクトリとして存在する → 通常のリポジトリ
+1. `git rev-parse` で worktree 環境かどうかを判定する
+   ```bash
+   GIT_DIR=$(git rev-parse --git-dir)
+   GIT_COMMON=$(git rev-parse --git-common-dir)
+   ```
+   - `GIT_DIR != GIT_COMMON` → **worktree 環境**
+   - `GIT_DIR == GIT_COMMON` → 通常のリポジトリ
 2. worktree 環境の場合、`git config --get remote.origin.fetch` を確認する
    - 空なら `git config remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"` で修正してから `git fetch origin` を実行する
 3. `gh pr create` は worktree + bare 環境では `--head {branch_name}` フラグを付ける

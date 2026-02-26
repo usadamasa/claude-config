@@ -133,6 +133,24 @@ func TestGenerateReport(t *testing.T) {
 	})
 }
 
+func TestResolveProjectsDir(t *testing.T) {
+	t.Run("--projects-dir 指定時はそのパスを使う", func(t *testing.T) {
+		got := resolveProjectsDir("/custom/projects", "/home/user")
+		want := "/custom/projects"
+		if got != want {
+			t.Errorf("resolveProjectsDir: got %q, want %q", got, want)
+		}
+	})
+
+	t.Run("未指定時は ~/.claude/projects を使う", func(t *testing.T) {
+		got := resolveProjectsDir("", "/home/user")
+		want := "/home/user/.claude/projects"
+		if got != want {
+			t.Errorf("resolveProjectsDir: got %q, want %q", got, want)
+		}
+	})
+}
+
 func TestMatchPattern(t *testing.T) {
 	tests := []struct {
 		name        string

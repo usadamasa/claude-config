@@ -20,3 +20,4 @@ stats-cache.json
 /agent-memory
 /debug
 /env.sh
+/.worktrees

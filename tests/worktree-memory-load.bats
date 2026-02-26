@@ -95,3 +95,82 @@ teardown() {
   [ "$status" -eq 0 ]
   [ -z "$(ls -A "$WORKTREE_MEM" 2>/dev/null)" ]
 }
+
+# =============================================================================
+# 通常モード: 操作ログ
+# =============================================================================
+
+@test "通常モード: MKDIR ログが stderr に出力される" {
+  rm -rf "$WORKTREE_MEM"
+  mkdir -p "$PARENT_MEM"
+  echo "# MEMORY" > "$PARENT_MEM/MEMORY.md"
+
+  run bash "$SCRIPT_PATH" "$TEST_WORKTREE"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"[worktree-memory-load]"* ]]
+  [[ "$output" == *"MKDIR"* ]]
+}
+
+@test "通常モード: 各ファイルの CP ログが stderr に出力される" {
+  mkdir -p "$PARENT_MEM"
+  echo "# MEMORY" > "$PARENT_MEM/MEMORY.md"
+  echo "# PATTERNS" > "$PARENT_MEM/patterns.md"
+
+  run bash "$SCRIPT_PATH" "$TEST_WORKTREE"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"[worktree-memory-load]"* ]]
+  [[ "$output" == *"CP"* ]]
+  [[ "$output" == *"MEMORY.md"* ]]
+  [[ "$output" == *"patterns.md"* ]]
+}
+
+# =============================================================================
+# dry-run モード
+# =============================================================================
+
+@test "dry-run: ファイルがコピーされない" {
+  mkdir -p "$PARENT_MEM"
+  echo "# MEMORY" > "$PARENT_MEM/MEMORY.md"
+  # worktree memory を空にしておく
+  rm -rf "$WORKTREE_MEM"
+
+  run env DRY_RUN=1 bash "$SCRIPT_PATH" "$TEST_WORKTREE"
+
+  [ "$status" -eq 0 ]
+  [ ! -f "$WORKTREE_MEM/MEMORY.md" ]
+}
+
+@test "dry-run: [DRY-RUN] プレフィックスでログが出力される" {
+  mkdir -p "$PARENT_MEM"
+  echo "# MEMORY" > "$PARENT_MEM/MEMORY.md"
+
+  run env DRY_RUN=1 bash "$SCRIPT_PATH" "$TEST_WORKTREE"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"[DRY-RUN]"* ]]
+  [[ "$output" == *"CP"* ]]
+  [[ "$output" == *"MEMORY.md"* ]]
+}
+
+@test "dry-run: ディレクトリが作成されない" {
+  rm -rf "$WORKTREE_MEM"
+  mkdir -p "$PARENT_MEM"
+  echo "# MEMORY" > "$PARENT_MEM/MEMORY.md"
+
+  run env DRY_RUN=1 bash "$SCRIPT_PATH" "$TEST_WORKTREE"
+
+  [ "$status" -eq 0 ]
+  [ ! -d "$WORKTREE_MEM" ]
+}
+
+@test "dry-run: 親 memory が存在しない場合に SKIP ログが出力される" {
+  # PARENT_MEM は未作成
+
+  run env DRY_RUN=1 bash "$SCRIPT_PATH" "$TEST_WORKTREE"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"[DRY-RUN]"* ]]
+  [[ "$output" == *"SKIP"* ]]
+}

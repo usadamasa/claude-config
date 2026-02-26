@@ -4,8 +4,13 @@
 #
 # Usage: worktree-memory-save.sh <worktree-path>
 #        または環境変数 GIT_WT_WORKTREE_PATH
+# 環境変数: DRY_RUN=1 で副作用なしのシミュレーション
 
 set -euo pipefail
+
+HOOK_NAME="worktree-memory-save"
+SCRIPT_DIR="${SCRIPT_DIR:-$(cd "$(dirname "$0")" && pwd)}"
+source "$SCRIPT_DIR/lib/hook-logger.sh"
 
 WORKTREE_PATH="${1:-${GIT_WT_WORKTREE_PATH:-}}"
 if [ -z "$WORKTREE_PATH" ]; then exit 0; fi
@@ -53,39 +58,51 @@ WORKTREE_MEM="$HOME/.claude/projects/$WORKTREE_ENC/memory"
 PARENT_MEM="$HOME/.claude/projects/$PARENT_ENC/memory"
 
 # worktree memory ディレクトリが存在しない場合はスキップ
-[ -d "$WORKTREE_MEM" ] || exit 0
+if [ ! -d "$WORKTREE_MEM" ]; then
+  log_skip "worktree memory が存在しない"
+  exit 0
+fi
 
 # 移行するファイルがない場合はスキップ
 HAS_FILES=false
 for f in MEMORY.md SESSION_HANDOFF.md; do
   [ -f "$WORKTREE_MEM/$f" ] && HAS_FILES=true && break
 done
-[ "$HAS_FILES" = true ] || exit 0
+if [ "$HAS_FILES" != true ]; then
+  log_skip "移行対象ファイルなし"
+  exit 0
+fi
 
-mkdir -p "$PARENT_MEM"
+logged_mkdir "$PARENT_MEM"
 
 # SESSION_HANDOFF.md: ブランチ名付きファイルにコピー (複数 worktree の情報が混在しないよう)
 if [ -f "$WORKTREE_MEM/SESSION_HANDOFF.md" ]; then
-  cp "$WORKTREE_MEM/SESSION_HANDOFF.md" "$PARENT_MEM/SESSION_HANDOFF_${BRANCH_NAME}.md"
+  logged_cp "$WORKTREE_MEM/SESSION_HANDOFF.md" "$PARENT_MEM/SESSION_HANDOFF_${BRANCH_NAME}.md"
 fi
 
 # MEMORY.md: 親が存在する場合は末尾に追記、存在しない場合はコピー
 if [ -f "$WORKTREE_MEM/MEMORY.md" ]; then
   if [ -f "$PARENT_MEM/MEMORY.md" ]; then
     DATE=$(date +%Y-%m-%d)
-    {
-      echo ""
-      echo "## [Merged from worktree: $BRANCH_NAME] $DATE"
-      echo ""
-      cat "$WORKTREE_MEM/MEMORY.md"
-    } >> "$PARENT_MEM/MEMORY.md"
+    HEADER="## [Merged from worktree: $BRANCH_NAME] $DATE"
+    if is_dry_run; then
+      echo "$(_log_prefix) APPEND header '$HEADER' -> $PARENT_MEM/MEMORY.md" >&2
+    else
+      echo "$(_log_prefix) APPEND header '$HEADER' -> $PARENT_MEM/MEMORY.md" >&2
+      {
+        echo ""
+        echo "$HEADER"
+        echo ""
+        cat "$WORKTREE_MEM/MEMORY.md"
+      } >> "$PARENT_MEM/MEMORY.md"
 
-    # MEMORY.md サイズ警告 (Claude Code は 200 行以降を切り捨てる)
-    LINE_COUNT=$(wc -l < "$PARENT_MEM/MEMORY.md")
-    if [ "$LINE_COUNT" -gt 150 ]; then
-      echo "WARNING: MEMORY.md is ${LINE_COUNT} lines. Claude Code truncates after 200 lines. Consider manual cleanup." >&2
+      # MEMORY.md サイズ警告 (Claude Code は 200 行以降を切り捨てる)
+      LINE_COUNT=$(wc -l < "$PARENT_MEM/MEMORY.md")
+      if [ "$LINE_COUNT" -gt 150 ]; then
+        log_info "WARNING: MEMORY.md is ${LINE_COUNT} lines. Claude Code truncates after 200 lines. Consider manual cleanup."
+      fi
     fi
   else
-    cp "$WORKTREE_MEM/MEMORY.md" "$PARENT_MEM/MEMORY.md"
+    logged_cp "$WORKTREE_MEM/MEMORY.md" "$PARENT_MEM/MEMORY.md"
   fi
 fi

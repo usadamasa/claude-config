@@ -126,3 +126,89 @@ teardown() {
 
   [ "$status" -eq 0 ]
 }
+
+# =============================================================================
+# 通常モード: 操作ログ
+# =============================================================================
+
+@test "通常モード: MKDIR ログが stderr に出力される" {
+  echo "# ワークツリー MEMORY" > "$WORKTREE_MEM/MEMORY.md"
+  # PARENT_MEM は未作成
+
+  run bash "$SCRIPT_PATH" "$TEST_WORKTREE"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"[worktree-memory-save]"* ]]
+  [[ "$output" == *"MKDIR"* ]]
+}
+
+@test "通常モード: SESSION_HANDOFF の CP ログが出力される" {
+  echo "# SESSION HANDOFF" > "$WORKTREE_MEM/SESSION_HANDOFF.md"
+
+  run bash "$SCRIPT_PATH" "$TEST_WORKTREE"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"[worktree-memory-save]"* ]]
+  [[ "$output" == *"CP"* ]]
+  [[ "$output" == *"SESSION_HANDOFF"* ]]
+}
+
+@test "通常モード: MEMORY.md 追記時に APPEND ログが出力される" {
+  mkdir -p "$PARENT_MEM"
+  echo "# 既存の親 MEMORY" > "$PARENT_MEM/MEMORY.md"
+  echo "# ワークツリー MEMORY" > "$WORKTREE_MEM/MEMORY.md"
+
+  run bash "$SCRIPT_PATH" "$TEST_WORKTREE"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"[worktree-memory-save]"* ]]
+  [[ "$output" == *"APPEND"* ]]
+}
+
+# =============================================================================
+# dry-run モード
+# =============================================================================
+
+@test "dry-run: ファイルがコピーされない" {
+  echo "# SESSION HANDOFF" > "$WORKTREE_MEM/SESSION_HANDOFF.md"
+  echo "# ワークツリー MEMORY" > "$WORKTREE_MEM/MEMORY.md"
+
+  run env DRY_RUN=1 bash "$SCRIPT_PATH" "$TEST_WORKTREE"
+
+  [ "$status" -eq 0 ]
+  [ ! -f "$PARENT_MEM/SESSION_HANDOFF_feature.md" ]
+  [ ! -f "$PARENT_MEM/MEMORY.md" ]
+}
+
+@test "dry-run: [DRY-RUN] プレフィックスでログが出力される" {
+  echo "# ワークツリー MEMORY" > "$WORKTREE_MEM/MEMORY.md"
+
+  run env DRY_RUN=1 bash "$SCRIPT_PATH" "$TEST_WORKTREE"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"[DRY-RUN]"* ]]
+}
+
+@test "dry-run: MEMORY.md 追記時に APPEND メッセージが出力される" {
+  mkdir -p "$PARENT_MEM"
+  echo "# 既存の親 MEMORY" > "$PARENT_MEM/MEMORY.md"
+  echo "# ワークツリー MEMORY" > "$WORKTREE_MEM/MEMORY.md"
+
+  run env DRY_RUN=1 bash "$SCRIPT_PATH" "$TEST_WORKTREE"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"[DRY-RUN]"* ]]
+  [[ "$output" == *"APPEND"* ]]
+  # 親 MEMORY.md が変更されていないこと
+  [[ "$(cat "$PARENT_MEM/MEMORY.md")" == "# 既存の親 MEMORY" ]]
+}
+
+@test "dry-run: worktree memory が存在しない場合に SKIP ログが出力される" {
+  rm -rf "$WORKTREE_MEM"
+
+  run env DRY_RUN=1 bash "$SCRIPT_PATH" "$TEST_WORKTREE"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"[DRY-RUN]"* ]]
+  [[ "$output" == *"SKIP"* ]]
+}

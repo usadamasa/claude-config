@@ -1,101 +1,93 @@
 # Claude Code グローバル設定
 
-> **Note:** このファイルは全プロジェクト共通の指示です｡
-> 原本は [claude-config](https://github.com/usadamasa/claude-config) リポジトリの `dotclaude/CLAUDE-global.md` で管理されています｡
+> **Note:** 全プロジェクト共通の指示｡原本は [claude-config](https://github.com/usadamasa/claude-config) の `dotclaude/CLAUDE-global.md` で管理｡
 
-## Conversation Guidelines
+## コア原則
 
-### 言語設定
+- **シンプル第一**: 最小限の変更で目的を達成する｡過剰な設計は避ける｡
+- **根本解決**: 一時的な修正は避け、根本原因を追求する｡ハック的修正を見つけたらエレガントな解決を実装する｡
+- **影響最小化**: 必要箇所のみ変更し、新規バグの導入を回避する｡
+- **検証前提**: 動作を証明できるまでタスクを完了としない｡「スタッフエンジニアはこれを承認するか?」と自問する｡
+
+## 言語・フォーマット
 
 - 会話は常に日本語で行う｡
-- コミットメッセージ､スキル定義などリポジトリに保存されるテキストは標準語で記載する｡(ConfigのLanguage設定に関わらず)
+- コミットメッセージ、スキル定義などリポジトリに保存されるテキストは標準語で記載する(Config の Language 設定に関わらず)｡
+- 半角を使用する文字: 句読点(｡ ､)、括弧(( ) [ ] { })、記号(, : ; ! ?)
 
-### 文字種ルール
+## ワークフロー
 
-以下の文字は全角ではなく半角を使用する:
+### 計画 (Plan First)
 
-- 句読点: ｡ ､
-- 括弧: ( ) [ ] { }
-- 記号: , : ; ! ?
+3ステップ以上またはアーキテクチャ判断を伴うタスクは、実装前に PLAN.md を作成する｡
+各ステップを順番に実装し、完了後に [x] でマーク｡
 
-## Development Philosophy
+- プランはあくまで「方針」｡実態との乖離に気づいたらプランより実態を優先する｡
+- 乖離発見時はユーザーへ確認するか、明らかなプランの誤りなら自分で修正して進める｡
 
-### Plan First
+### テスト駆動開発 (TDD)
 
-Read PLAN.md and implement every step sequentially. After each step, mark it complete with [x] in the plan file. Run all relevant CI checks (ruff, tflint, go vet) after completing all steps. If any check fails, fix it before proceeding. When all steps are done, commit and create a PR.
+- まずテストを作成し、失敗を確認する｡
+- テストが正しいことを確認したらコミットする｡
+- その後、テストをパスする実装を進める｡実装中はテストを変更しない｡
+- すべてのテストが通過するまで繰り返す｡
 
-- プランはあくまで「方針」であり､実装時にコードや設定ファイルを読んで実態との乖離に気づいたら､プランに盲従せず実態を優先すること｡
-- 乖離に気づいた時点でユーザーに確認するか､明らかにプラン側の誤りであれば自分で修正して進める｡検証ステップまで問題を先送りしない｡
+### 自律的バグ修正
 
-### Infrastructure changes
+- バグレポートを受けたら、質問せずに直接調査・修正する｡ユーザーのコンテキスト切り替えをゼロにする｡
 
-Before proposing any infrastructure changes, confirm:
+### CI
 
-- 1) What is the deployment target (GCE/GKE/Cloud Run)?
-- 2) Are there org policies that restrict public IPs, external access, or specific GCP services?
-- 3) What auth method is used (service account, IAM, workload identity)?
-- 4) List any known constraints from previous failed attempts.
+- CI が失敗したら、進行中タスクに関係なくても **即座に CI 修正に注力** する｡既存問題として無視しない｡
+- 全 CI チェック通過を確認してからコミット・タスク再開する｡
 
-### CI 優先ポリシー
+### インフラ変更
 
-- CI が失敗したら、進行中のタスクに関係ない不具合であっても **即座にすべてのタスクを止めて CI 修正に注力** する
-- 「main でも同じだから既存問題」として無視して先に進めてはいけない
-- CI が安定して通ることを確認してから元のタスクを再開する
+インフラ変更を提案する前に確認する:
 
-### Test-Driven Development (TDD)
+1. デプロイ先 (GCE/GKE/Cloud Run)
+2. Org Policy の制約 (パブリック IP、外部アクセス、GCP サービス制限)
+3. 認証方式 (service account, IAM, workload identity)
+4. 過去の失敗からの既知の制約
 
-- 原則としてテスト駆動開発(TDD)で進める
-- 期待される入出力に基づき､まずテストを作成する
-- 実装コードは書かず､テストのみを用意する
-- テストを実行し､失敗を確認する
-- テストが正しいことを確認できた段階でコミットする
-- その後､テストをパスさせる実装を進める
-- 実装中はテストを変更せず､コードを修正し続ける
-- すべてのテストが通過するまで繰り返す
+## Git 操作
 
-## Git 操作のプリフライトチェック
+git 操作 (commit, push, PR作成) の前に、必ず以下を実行する:
 
-git 操作 (commit, push, PR作成など) を行う前に、**必ず以下の環境チェックを実行する**:
-
-1. `git rev-parse` で worktree 環境かどうかを判定する
-   ```bash
-   GIT_DIR=$(git rev-parse --git-dir)
-   GIT_COMMON=$(git rev-parse --git-common-dir)
-   ```
-   - `GIT_DIR != GIT_COMMON` → **worktree 環境**
-   - `GIT_DIR == GIT_COMMON` → 通常のリポジトリ
-2. worktree 環境の場合、`git config --get remote.origin.fetch` を確認する
-   - 空なら `git config remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"` で修正してから `git fetch origin` を実行する
-3. `gh pr create` は worktree + bare 環境では `--head {branch_name}` フラグを付ける
+1. `git rev-parse --git-dir` と `git rev-parse --git-common-dir` を比較して worktree 環境を判定
+   - 値が異なる → worktree 環境 / 同じ → 通常リポジトリ
+2. worktree 環境: `git config --get remote.origin.fetch` が空なら `git config remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"` を実行後 `git fetch origin`
+3. `gh pr create` は worktree + bare 環境では `--head {branch_name}` を付ける
 
 ## セッション管理
 
 ### セッション分割
 
 - 1タスク = 1セッション｡タスク完了後は新規セッションを開始する｡
-- plan → implement → verify のサイクルをworktree単位で分離する｡
-- 長時間セッションではコンテキストが蓄積し､APIコール1回あたりのinput tokensが増大するため､定期的にセッションを区切る｡
+- plan → implement → verify のサイクルを worktree 単位で分離する｡
+- コンテキスト蓄積による input tokens 増大を防ぐため、定期的にセッションを区切る｡
 
-### subagentモデル指定
+### subagent 運用
 
-- Taskツールでの探索(`subagent_type=Explore`)は `model: "haiku"` または `model: "sonnet"` を指定する｡
-- 実装の計画(`subagent_type=Plan`)は `model: "opus"` を指定する｡
-- 実装は親セッションのデフォルトモデルを使用する｡
+- 調査・探索はサブエージェントに委譲し、メインコンテキストをクリーンに保つ｡
+- 1エージェント = 1タスクの原則で特化性を確保する｡
+- タスクの重さに応じてモデルを選択する: 探索は軽量モデル、計画は高性能モデル｡
 
-## 技術調査とツール
+### 自己改善ループ
 
-- 技術要素やソフトウェアエンジニアリングについて調査するときは subagent: orm-discovery-mcp-go:oreilly-researcher を積極的に利用するようにしてください｡
+- ユーザーから修正・フィードバックを受けたら、そのパターンを auto memory に記録する｡
+- 記録フォーマット: `[日付] ミスの内容 → 正しいアプローチ`
+- プロジェクトに `tasks/lessons.md` がある場合はそちらに記録する｡
 
-## Skills 実装
+## ツールとスキル
 
-<https://code.claude.com/docs/en/skills> を参照し､適切な形式で記述してください｡
-作成後､Skillsとして利用可能であることを `/skills` で検証してください｡
+### 技術調査
 
-### スキルの配置場所
+- 技術要素やソフトウェアエンジニアリングの調査には subagent `orm-discovery-mcp-go:oreilly-researcher` を積極的に利用する｡
 
-| スコープ | 配置場所 | 説明 |
-| --------- | --------- | ------ |
-| グローバル | `~/.claude/skills/` | 全プロジェクトで利用可能 |
-| プロジェクト | プロジェクトの `.claude/skills/` | そのプロジェクトのみで利用可能 |
+### スキル開発
 
-特に指示がなければグローバルスコープ(`~/.claude/skills/`)に配置してください｡
+- <https://code.claude.com/docs/en/skills> を参照し、適切な形式で記述する｡
+- 作成後、`/skills` で利用可能か検証する｡
+- 配置場所: グローバル(`~/.claude/skills/`) or プロジェクト(`.claude/skills/`)｡
+- 特に指示がなければグローバルスコープに配置する｡

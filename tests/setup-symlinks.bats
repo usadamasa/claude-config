@@ -71,9 +71,9 @@ teardown() {
   ln -sfn "$REPO_ROOT/dotclaude/CLAUDE-global.md" "$FAKE_HOME/.claude/CLAUDE.md"
 
   # グローバル設定特有の内容が含まれる
-  grep -q "Conversation Guidelines" "$FAKE_HOME/.claude/CLAUDE.md"
-  grep -q "Development Philosophy" "$FAKE_HOME/.claude/CLAUDE.md"
-  grep -q "Test-Driven Development" "$FAKE_HOME/.claude/CLAUDE.md"
+  grep -q "コア原則" "$FAKE_HOME/.claude/CLAUDE.md"
+  grep -q "ワークフロー" "$FAKE_HOME/.claude/CLAUDE.md"
+  grep -q "テスト駆動開発" "$FAKE_HOME/.claude/CLAUDE.md"
 }
 
 @test "CLAUDE.md (プロジェクトスコープ) にグローバル設定が含まれない" {

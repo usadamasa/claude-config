@@ -19,5 +19,5 @@ stats-cache.json
 /security_warnings_state_*.json
 /agent-memory
 /debug
-/env.sh
+/dotclaude/env.sh
 /.worktrees

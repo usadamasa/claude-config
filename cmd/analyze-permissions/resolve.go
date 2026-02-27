@@ -14,7 +14,7 @@ func resolveSettingsPath(cwd, home string) (string, error) {
 		gitPath := filepath.Join(dir, ".git")
 		if _, err := os.Lstat(gitPath); err == nil {
 			// git ルートを検出
-			settingsPath := filepath.Join(dir, "settings.json")
+			settingsPath := filepath.Join(dir, "dotclaude", "settings.json")
 			if _, err := os.Stat(settingsPath); err == nil {
 				return settingsPath, nil
 			}

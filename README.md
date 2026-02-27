@@ -1,6 +1,6 @@
 # claude-config
 
-Claude Code グローバル設定リポジトリ。skills, hooks, CLAUDE.md, settings.json を管理します。
+Claude Code グローバル設定リポジトリ。`dotclaude/` 配下の skills, hooks, CLAUDE.md, settings.json を管理します。
 
 ## セットアップ
 
@@ -17,10 +17,10 @@ task setup
 
 | ファイル/ディレクトリ | symlink 先 | 説明 |
 |---|---|---|
-| `CLAUDE-global.md` | `~/.claude/CLAUDE.md` | グローバル Claude 指示 |
-| `settings.json` | `~/.claude/settings.json` | 権限・モデル設定 |
-| `hooks/` | `~/.claude/hooks` | セッションフック |
-| `skills/usadamasa-*/` | `~/.claude/skills/usadamasa-*/` | グローバルスキル |
+| `dotclaude/CLAUDE-global.md` | `~/.claude/CLAUDE.md` | グローバル Claude 指示 |
+| `dotclaude/settings.json` | `~/.claude/settings.json` | 権限・モデル設定 |
+| `dotclaude/hooks/` | `~/.claude/hooks` | セッションフック |
+| `dotclaude/skills/usadamasa-*/` | `~/.claude/skills/usadamasa-*/` | グローバルスキル |
 
 ## タスク
 
@@ -33,7 +33,7 @@ task clean   # symlink を削除
 ## スキルの追加
 
 ```sh
-mkdir -p skills/<skill-name>
-# skills/<skill-name>/SKILL.md を作成
+mkdir -p dotclaude/skills/<skill-name>
+# dotclaude/skills/<skill-name>/SKILL.md を作成
 task setup   # symlink を自動検出して追加
 ```

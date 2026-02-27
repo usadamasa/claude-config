@@ -17,7 +17,7 @@ settings.jsonの`permissions.allow`に登録されているWebFetch/Fetchドメ�
 ### 0. worktree 環境チェック
 
 CLAUDE.md の「worktree 環境でのファイルパス解決」を参照し、worktree 判定を行う。
-worktree 環境の場合、以降のステップで settings.json のパスを `$(pwd)/settings.json` に読み替えること。
+worktree 環境の場合、以降のステップで settings.json のパスを `$(pwd)/dotclaude/settings.json` に読み替えること。
 
 ### 1. 分析の実行
 
@@ -30,7 +30,7 @@ go run ./cmd/analyze-webfetch --days 30
 
 **worktree 環境:**
 ```bash
-go run ./cmd/analyze-webfetch --days 30 --settings $(pwd)/settings.json --projects-dir ~/.claude/projects
+go run ./cmd/analyze-webfetch --days 30 --settings $(pwd)/dotclaude/settings.json --projects-dir ~/.claude/projects
 ```
 
 オプション:

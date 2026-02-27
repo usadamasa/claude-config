@@ -7,7 +7,7 @@ import (
 )
 
 func TestResolveSettingsPath(t *testing.T) {
-	t.Run("worktree環境ではgitルートのsettings.jsonを返す", func(t *testing.T) {
+	t.Run("worktree環境ではgitルートのdotclaude/settings.jsonを返す", func(t *testing.T) {
 		tmpDir := t.TempDir()
 
 		// worktree 環境をシミュレート: .git はファイル
@@ -16,8 +16,12 @@ func TestResolveSettingsPath(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		// settings.json を配置
-		settingsFile := filepath.Join(tmpDir, "settings.json")
+		// dotclaude/settings.json を配置
+		dotclaudeDir := filepath.Join(tmpDir, "dotclaude")
+		if err := os.MkdirAll(dotclaudeDir, 0755); err != nil {
+			t.Fatal(err)
+		}
+		settingsFile := filepath.Join(dotclaudeDir, "settings.json")
 		if err := os.WriteFile(settingsFile, []byte(`{"permissions":{}}`), 0644); err != nil {
 			t.Fatal(err)
 		}
@@ -31,7 +35,7 @@ func TestResolveSettingsPath(t *testing.T) {
 		}
 	})
 
-	t.Run("通常リポジトリでもgitルートのsettings.jsonを返す", func(t *testing.T) {
+	t.Run("通常リポジトリでもgitルートのdotclaude/settings.jsonを返す", func(t *testing.T) {
 		tmpDir := t.TempDir()
 
 		// 通常リポジトリ: .git はディレクトリ
@@ -40,8 +44,12 @@ func TestResolveSettingsPath(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		// settings.json を配置
-		settingsFile := filepath.Join(tmpDir, "settings.json")
+		// dotclaude/settings.json を配置
+		dotclaudeDir := filepath.Join(tmpDir, "dotclaude")
+		if err := os.MkdirAll(dotclaudeDir, 0755); err != nil {
+			t.Fatal(err)
+		}
+		settingsFile := filepath.Join(dotclaudeDir, "settings.json")
 		if err := os.WriteFile(settingsFile, []byte(`{"permissions":{}}`), 0644); err != nil {
 			t.Fatal(err)
 		}
@@ -55,10 +63,10 @@ func TestResolveSettingsPath(t *testing.T) {
 		}
 	})
 
-	t.Run("gitルートにsettings.jsonがなければデフォルトを返す", func(t *testing.T) {
+	t.Run("gitルートにdotclaude/settings.jsonがなければデフォルトを返す", func(t *testing.T) {
 		tmpDir := t.TempDir()
 
-		// .git ディレクトリのみ (settings.json なし)
+		// .git ディレクトリのみ (dotclaude/settings.json なし)
 		gitDir := filepath.Join(tmpDir, ".git")
 		if err := os.Mkdir(gitDir, 0755); err != nil {
 			t.Fatal(err)
@@ -99,8 +107,12 @@ func TestResolveSettingsPath(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		// settings.json を配置
-		settingsFile := filepath.Join(tmpDir, "settings.json")
+		// dotclaude/settings.json を配置
+		dotclaudeDir := filepath.Join(tmpDir, "dotclaude")
+		if err := os.MkdirAll(dotclaudeDir, 0755); err != nil {
+			t.Fatal(err)
+		}
+		settingsFile := filepath.Join(dotclaudeDir, "settings.json")
 		if err := os.WriteFile(settingsFile, []byte(`{"permissions":{}}`), 0644); err != nil {
 			t.Fatal(err)
 		}

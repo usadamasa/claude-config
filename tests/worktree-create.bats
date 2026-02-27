@@ -2,7 +2,7 @@
 # worktree-create.sh のテスト
 bats_require_minimum_version 1.5.0
 
-SCRIPT_PATH="$(cd "$(dirname "$BATS_TEST_FILENAME")/.." && pwd)/hooks/worktree-create.sh"
+SCRIPT_PATH="$(cd "$(dirname "$BATS_TEST_FILENAME")/.." && pwd)/dotclaude/hooks/worktree-create.sh"
 
 setup() {
   TEST_TMPDIR=$(mktemp -d)
@@ -10,7 +10,7 @@ setup() {
   mkdir -p "$MOCK_BIN"
 
   # hook-logger.sh を MOCK_BIN/lib にコピー
-  REAL_HOOKS_DIR="$(cd "$(dirname "$BATS_TEST_FILENAME")/.." && pwd)/hooks"
+  REAL_HOOKS_DIR="$(cd "$(dirname "$BATS_TEST_FILENAME")/.." && pwd)/dotclaude/hooks"
   mkdir -p "$MOCK_BIN/lib"
   cp "$REAL_HOOKS_DIR/lib/hook-logger.sh" "$MOCK_BIN/lib/hook-logger.sh"
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bats
 # worktree-memory-load.sh のテスト
 
-SCRIPT_PATH="$(cd "$(dirname "$BATS_TEST_FILENAME")/.." && pwd)/hooks/worktree-memory-load.sh"
+SCRIPT_PATH="$(cd "$(dirname "$BATS_TEST_FILENAME")/.." && pwd)/dotclaude/hooks/worktree-memory-load.sh"
 
 setup() {
   load 'fixtures/worktree-setup.sh'

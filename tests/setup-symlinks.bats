@@ -21,7 +21,7 @@ teardown() {
 # =============================================================================
 
 @test "CLAUDE-global.md がリポジトリルートに存在する" {
-  [ -f "$REPO_ROOT/CLAUDE-global.md" ]
+  [ -f "$REPO_ROOT/dotclaude/CLAUDE-global.md" ]
 }
 
 @test "CLAUDE.md (プロジェクトスコープ) がリポジトリルートに存在する" {
@@ -29,7 +29,7 @@ teardown() {
 }
 
 @test "CLAUDE-global.md と CLAUDE.md の内容が異なる" {
-  ! diff -q "$REPO_ROOT/CLAUDE-global.md" "$REPO_ROOT/CLAUDE.md" >/dev/null 2>&1
+  ! diff -q "$REPO_ROOT/dotclaude/CLAUDE-global.md" "$REPO_ROOT/CLAUDE.md" >/dev/null 2>&1
 }
 
 # =============================================================================
@@ -38,14 +38,37 @@ teardown() {
 
 @test "setup で CLAUDE-global.md → ~/.claude/CLAUDE.md にリンクされる" {
   # setup タスクの CLAUDE-global.md 処理を再現
-  ln -sfn "$REPO_ROOT/CLAUDE-global.md" "$FAKE_HOME/.claude/CLAUDE.md"
+  ln -sfn "$REPO_ROOT/dotclaude/CLAUDE-global.md" "$FAKE_HOME/.claude/CLAUDE.md"
 
   [ -L "$FAKE_HOME/.claude/CLAUDE.md" ]
-  [ "$(readlink "$FAKE_HOME/.claude/CLAUDE.md")" = "$REPO_ROOT/CLAUDE-global.md" ]
+  [ "$(readlink "$FAKE_HOME/.claude/CLAUDE.md")" = "$REPO_ROOT/dotclaude/CLAUDE-global.md" ]
+}
+
+@test "setup で dotclaude/settings.json → ~/.claude/settings.json にリンクされる (basename 検証)" {
+  # setup タスクの basename ロジックを再現
+  local src="$REPO_ROOT/dotclaude/settings.json"
+  local basename
+  basename=$(basename "dotclaude/settings.json")
+  ln -sfn "$src" "$FAKE_HOME/.claude/$basename"
+
+  [ -L "$FAKE_HOME/.claude/settings.json" ]
+  [ "$(readlink "$FAKE_HOME/.claude/settings.json")" = "$src" ]
+  # dotclaude/ がターゲット名に含まれないことを確認
+  [ ! -e "$FAKE_HOME/.claude/dotclaude" ]
+}
+
+@test "setup で dotclaude/hooks → ~/.claude/hooks にリンクされる (basename 検証)" {
+  local src="$REPO_ROOT/dotclaude/hooks"
+  local basename
+  basename=$(basename "dotclaude/hooks")
+  ln -sfn "$src" "$FAKE_HOME/.claude/$basename"
+
+  [ -L "$FAKE_HOME/.claude/hooks" ]
+  [ "$(readlink "$FAKE_HOME/.claude/hooks")" = "$src" ]
 }
 
 @test "symlink 先の内容がグローバル設定を含む" {
-  ln -sfn "$REPO_ROOT/CLAUDE-global.md" "$FAKE_HOME/.claude/CLAUDE.md"
+  ln -sfn "$REPO_ROOT/dotclaude/CLAUDE-global.md" "$FAKE_HOME/.claude/CLAUDE.md"
 
   # グローバル設定特有の内容が含まれる
   grep -q "Conversation Guidelines" "$FAKE_HOME/.claude/CLAUDE.md"
@@ -89,8 +112,8 @@ teardown() {
   grep -q "git rev-parse --git-common-dir" "$REPO_ROOT/CLAUDE.md"
 }
 
-@test "CLAUDE.md に worktree 用パス解決 (pwd)/settings.json の記載がある" {
-  grep -q 'pwd)/settings.json' "$REPO_ROOT/CLAUDE.md"
+@test "CLAUDE.md に worktree 用パス解決 (pwd)/dotclaude/settings.json の記載がある" {
+  grep -q 'pwd)/dotclaude/settings.json' "$REPO_ROOT/CLAUDE.md"
 }
 
 @test "CLAUDE.md に CLI ツールの --settings オプション記載がある" {
@@ -107,8 +130,8 @@ teardown() {
   grep -q 'settings.*pwd' "$REPO_ROOT/.claude/skills/webfetch-domain-manager/SKILL.md"
 }
 
-@test "manage-claude-envs に worktree 用パス (pwd)/env.sh の記載がある" {
-  grep -q 'pwd)/env.sh' "$REPO_ROOT/.claude/skills/manage-claude-envs/skill.md"
+@test "manage-claude-envs に worktree 用パス (pwd)/dotclaude/env.sh の記載がある" {
+  grep -q 'pwd)/dotclaude/env.sh' "$REPO_ROOT/.claude/skills/manage-claude-envs/skill.md"
 }
 
 # =============================================================================
@@ -116,26 +139,26 @@ teardown() {
 # =============================================================================
 
 @test "CLAUDE-global.md に git rev-parse による worktree 判定の記載がある" {
-  grep -q "git rev-parse --git-dir" "$REPO_ROOT/CLAUDE-global.md"
-  grep -q "git rev-parse --git-common-dir" "$REPO_ROOT/CLAUDE-global.md"
+  grep -q "git rev-parse --git-dir" "$REPO_ROOT/dotclaude/CLAUDE-global.md"
+  grep -q "git rev-parse --git-common-dir" "$REPO_ROOT/dotclaude/CLAUDE-global.md"
 }
 
 @test "CLAUDE-global.md に cat .git による判定が残っていない" {
-  ! grep -q 'cat \.git' "$REPO_ROOT/CLAUDE-global.md"
+  ! grep -q 'cat \.git' "$REPO_ROOT/dotclaude/CLAUDE-global.md"
 }
 
 @test "finalize-pr スキルに git rev-parse による worktree 判定の記載がある" {
-  grep -q "git rev-parse --git-dir" "$REPO_ROOT/skills/usadamasa-finalize-pr/SKILL.md"
-  grep -q "git rev-parse --git-common-dir" "$REPO_ROOT/skills/usadamasa-finalize-pr/SKILL.md"
+  grep -q "git rev-parse --git-dir" "$REPO_ROOT/dotclaude/skills/usadamasa-finalize-pr/SKILL.md"
+  grep -q "git rev-parse --git-common-dir" "$REPO_ROOT/dotclaude/skills/usadamasa-finalize-pr/SKILL.md"
 }
 
 @test "finalize-pr スキルに cat .git による判定が残っていない" {
-  ! grep -q 'cat \.git' "$REPO_ROOT/skills/usadamasa-finalize-pr/SKILL.md"
+  ! grep -q 'cat \.git' "$REPO_ROOT/dotclaude/skills/usadamasa-finalize-pr/SKILL.md"
 }
 
 @test "session-handoff スキルに git rev-parse による worktree 判定の記載がある" {
-  grep -q "git rev-parse --git-dir" "$REPO_ROOT/skills/usadamasa-session-handoff/SKILL.md"
-  grep -q "git rev-parse --git-common-dir" "$REPO_ROOT/skills/usadamasa-session-handoff/SKILL.md"
+  grep -q "git rev-parse --git-dir" "$REPO_ROOT/dotclaude/skills/usadamasa-session-handoff/SKILL.md"
+  grep -q "git rev-parse --git-common-dir" "$REPO_ROOT/dotclaude/skills/usadamasa-session-handoff/SKILL.md"
 }
 
 @test "claude-config-management に worktree 環境チェックの記載がある" {

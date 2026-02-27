@@ -1,7 +1,7 @@
 #!/usr/bin/env bats
 # hooks/lib/hook-logger.sh のテスト
 
-LOGGER_PATH="$(cd "$(dirname "$BATS_TEST_FILENAME")/.." && pwd)/hooks/lib/hook-logger.sh"
+LOGGER_PATH="$(cd "$(dirname "$BATS_TEST_FILENAME")/.." && pwd)/dotclaude/hooks/lib/hook-logger.sh"
 
 setup() {
   TEST_TMPDIR=$(mktemp -d)

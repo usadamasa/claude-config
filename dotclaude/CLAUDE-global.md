@@ -1,7 +1,7 @@
 # Claude Code グローバル設定
 
 > **Note:** このファイルは全プロジェクト共通の指示です｡
-> 原本は [claude-config](https://github.com/usadamasa/claude-config) リポジトリの `CLAUDE-global.md` で管理されています｡
+> 原本は [claude-config](https://github.com/usadamasa/claude-config) リポジトリの `dotclaude/CLAUDE-global.md` で管理されています｡
 
 ## Conversation Guidelines
 

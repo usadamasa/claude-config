@@ -33,33 +33,35 @@ tasks:
       - mkdir -p "$HOME/.claude/skills"
       # CLAUDE-global.md → ~/.claude/CLAUDE.md (名前が異なる特殊マッピング)
       - |
-        if [ -f "{{.TASKFILE_DIR}}/CLAUDE-global.md" ]; then
-          ln -sfn "{{.TASKFILE_DIR}}/CLAUDE-global.md" "$HOME/.claude/CLAUDE.md"
+        if [ -f "{{.TASKFILE_DIR}}/dotclaude/CLAUDE-global.md" ]; then
+          ln -sfn "{{.TASKFILE_DIR}}/dotclaude/CLAUDE-global.md" "$HOME/.claude/CLAUDE.md"
           echo "  ✓ CLAUDE-global.md → CLAUDE.md"
         fi
-      # トップレベルファイルの symlink
+      # dotclaude/ 配下のファイルの symlink
       - |
-        for file in settings.json env.sh; do
+        for file in dotclaude/settings.json dotclaude/env.sh; do
           if [ -f "{{.TASKFILE_DIR}}/$file" ]; then
-            ln -sfn "{{.TASKFILE_DIR}}/$file" "$HOME/.claude/$file"
-            echo "  ✓ $file"
+            basename=$(basename "$file")
+            ln -sfn "{{.TASKFILE_DIR}}/$file" "$HOME/.claude/$basename"
+            echo "  ✓ $basename"
           fi
         done
-      # トップレベルディレクトリの symlink
+      # dotclaude/ 配下のディレクトリの symlink
       - |
-        for dir in hooks; do
+        for dir in dotclaude/hooks; do
           if [ -d "{{.TASKFILE_DIR}}/$dir" ]; then
-            target="$HOME/.claude/$dir"
+            basename=$(basename "$dir")
+            target="$HOME/.claude/$basename"
             if [ -d "$target" ] && [ ! -L "$target" ]; then
               rm -rf "$target"
             fi
             ln -sfn "{{.TASKFILE_DIR}}/$dir" "$target"
-            echo "  ✓ $dir/"
+            echo "  ✓ $basename/"
           fi
         done
-      # skills/ 配下の全スキルを自動検出 & symlink
+      # dotclaude/skills/ 配下の全スキルを自動検出 & symlink
       - |
-        for skill_dir in "{{.TASKFILE_DIR}}/skills"/*/; do
+        for skill_dir in "{{.TASKFILE_DIR}}/dotclaude/skills"/*/; do
           [ -d "$skill_dir" ] || continue
           skill_name=$(basename "$skill_dir")
           target="$HOME/.claude/skills/$skill_name"
@@ -82,7 +84,7 @@ tasks:
         echo "  hooks: $(test -L "$HOME/.claude/hooks" && echo '✓' || echo '✗')"
         echo "  env.sh: $(test -L "$HOME/.claude/env.sh" && echo '✓' || echo '✗')"
         echo "  skills:"
-        for skill_dir in "{{.TASKFILE_DIR}}/skills"/*/; do
+        for skill_dir in "{{.TASKFILE_DIR}}/dotclaude/skills"/*/; do
           [ -d "$skill_dir" ] || continue
           skill_name=$(basename "$skill_dir")
           echo "    $skill_name: $(test -L "$HOME/.claude/skills/$skill_name" && echo '✓' || echo '✗')"
@@ -100,7 +102,7 @@ tasks:
           rm -rf "$target"
         fi
       - |
-        for skill_dir in "{{.TASKFILE_DIR}}/skills"/*/; do
+        for skill_dir in "{{.TASKFILE_DIR}}/dotclaude/skills"/*/; do
           [ -d "$skill_dir" ] || continue
           skill_name=$(basename "$skill_dir")
           target="$HOME/.claude/skills/$skill_name"

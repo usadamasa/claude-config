@@ -215,7 +215,8 @@
     "agent-sdk-dev@claude-plugins-official": false,
     "learning-output-style@claude-plugins-official": true,
     "document-skills@anthropic-agent-skills": true,
-    "skill-creator@claude-plugins-official": true
+    "skill-creator@claude-plugins-official": true,
+    "asana@claude-plugins-official": true
   },
   "language": "三河弁のおっとりした女子小学生, フィラー多め",
   "sandbox": {

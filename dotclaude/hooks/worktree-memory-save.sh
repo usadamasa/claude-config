@@ -85,13 +85,13 @@ MEMORY_MARKER="<!-- worktree-memory-loaded -->"
 if [ -f "$WORKTREE_MEM/MEMORY.md" ]; then
   # マーカーの有無を確認
   HAS_MARKER=false
-  grep -q "^${MEMORY_MARKER}$" "$WORKTREE_MEM/MEMORY.md" && HAS_MARKER=true
+  grep -qFx "$MEMORY_MARKER" "$WORKTREE_MEM/MEMORY.md" && HAS_MARKER=true
 
   if [ -f "$PARENT_MEM/MEMORY.md" ]; then
     # 親が存在する場合: 差分のみ追記
     if [ "$HAS_MARKER" = true ]; then
       # マーカー以降の内容を抽出
-      NEW_CONTENT=$(sed "1,/^${MEMORY_MARKER}$/d" "$WORKTREE_MEM/MEMORY.md")
+      NEW_CONTENT=$(awk -v marker="$MEMORY_MARKER" 'found {print} $0 == marker {found=1}' "$WORKTREE_MEM/MEMORY.md")
     else
       # マーカーなし (後方互換): 全内容を使用
       NEW_CONTENT=$(cat "$WORKTREE_MEM/MEMORY.md")
@@ -128,7 +128,7 @@ if [ -f "$WORKTREE_MEM/MEMORY.md" ]; then
         echo "$(_log_prefix) CP     $WORKTREE_MEM/MEMORY.md -> $PARENT_MEM/MEMORY.md (marker stripped)" >&2
       else
         echo "$(_log_prefix) CP     $WORKTREE_MEM/MEMORY.md -> $PARENT_MEM/MEMORY.md (marker stripped)" >&2
-        sed "/^${MEMORY_MARKER}$/d" "$WORKTREE_MEM/MEMORY.md" > "$PARENT_MEM/MEMORY.md"
+        awk -v marker="$MEMORY_MARKER" '$0 != marker' "$WORKTREE_MEM/MEMORY.md" > "$PARENT_MEM/MEMORY.md"
       fi
     else
       logged_cp "$WORKTREE_MEM/MEMORY.md" "$PARENT_MEM/MEMORY.md"

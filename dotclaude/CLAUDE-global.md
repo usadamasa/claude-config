@@ -11,7 +11,7 @@
 
 ## 言語・フォーマット
 
-- 会話は常に日本語で行う｡
+- 会話言語は settings.json の language 設定に従う｡未設定なら日本語で行う｡
 - コミットメッセージ、スキル定義などリポジトリに保存されるテキストは標準語で記載する(Config の Language 設定に関わらず)｡
 - 半角を使用する文字: 句読点(｡ ､)、括弧(( ) [ ] { })、記号(, : ; ! ?)
 
@@ -58,6 +58,11 @@ git 操作 (commit, push, PR作成) の前に、必ず以下を実行する:
    - 値が異なる → worktree 環境 / 同じ → 通常リポジトリ
 2. worktree 環境: `git config --get remote.origin.fetch` が空なら `git config remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"` を実行後 `git fetch origin`
 3. `gh pr create` は worktree + bare 環境では `--head {branch_name}` を付ける
+
+### 破壊的操作
+
+- `git rebase`, `git reset` は原則使用しない｡必要な場合はユーザー確認を取る｡
+- `git stash` より worktree 分離を優先する｡
 
 ## セッション管理
 

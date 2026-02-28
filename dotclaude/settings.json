@@ -14,12 +14,14 @@
       "Bash(docker run:*)",
       "Bash(docker system:*)",
       "Bash(docker tag:*)",
+      "Bash(docker volume:*)",
       "Bash(gh:*)",
       "Bash(git add:*)",
       "Bash(git branch:*)",
       "Bash(git checkout:*)",
       "Bash(git commit:*)",
       "Bash(git config --get:*)",
+      "Bash(git config remote.origin.fetch:*)",
       "Bash(git diff:*)",
       "Bash(git fetch:*)",
       "Bash(git log:*)",
@@ -53,6 +55,7 @@
       "Bash(go vet:*)",
       "Bash(goenv:*)",
       "Bash(golangci-lint:*)",
+      "Bash(jq:*)",
       "Bash(ls:*)",
       "Bash(make:*)",
       "Bash(mkdir:*)",
@@ -151,7 +154,7 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Read|Edit|Write|Glob|Grep",
+        "matcher": "Read|Edit|Write|Glob|Grep|NotebookEdit",
         "hooks": [
           {
             "type": "command",

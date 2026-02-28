@@ -86,7 +86,7 @@ if check_tool go-arch-lint; then
 
     if [[ ! -f ".go-arch-lint.yml" ]]; then
         echo "  警告: .go-arch-lint.yml が見つかりません。設定ファイルを作成してください。"
-        echo "  参考: ~/.claude/skills/usadamasa-go-arch-metrics/references/arch-lint-config.md"
+        echo "  参考: ~/.claude/skills/go-arch-metrics/references/arch-lint-config.md"
     else
         ARCH_JSON=$(go-arch-lint check --json-output ./... 2>/dev/null || true)
         if [[ -n "$ARCH_JSON" ]]; then
@@ -159,6 +159,6 @@ echo ""
 echo "=== 測定完了 ==="
 echo ""
 echo "次のステップ:"
-echo "  1. 違反を分析: ~/.claude/skills/usadamasa-go-arch-metrics/references/remediation.md"
+echo "  1. 違反を分析: ~/.claude/skills/go-arch-metrics/references/remediation.md"
 echo "  2. 設定ファイルを調整: references/golangci-config.md, references/arch-lint-config.md"
 echo "  3. CI に統合: references/ci-integration.md"

@@ -26,6 +26,31 @@ claude-config設定の変更をDockerコンテナで即座に検証し、改善�
 - Docker Desktop が起動していること
 - `docker/verify.sh` がリポジトリに存在すること
 
+## dotclaude/ → Docker マッピング
+
+`verify.sh` の `sync_config()` が dotclaude/ の各構成要素を Docker コンテナ内の `~/.claude/` に展開する。
+
+| dotclaude/ | Docker 内 (`~/.claude/`) | 変換処理 |
+|---|---|---|
+| `CLAUDE-global.md` | `CLAUDE.md` | **名前変換あり** |
+| `settings.json` | `settings.json` | MCP 無効化 + statusLine 削除 |
+| `env.sh` | `env.sh` | そのままコピー (なければ env.sh.example) |
+| `hooks/` | `hooks/` | ディレクトリごとコピー |
+| `bin/` | `bin/` | ディレクトリごとコピー (hooks が参照するバイナリ) |
+| `skills/*/` | `skills/*/` | 各スキルディレクトリを個別コピー |
+
+構成要素を追加・削除した場合は `sync_config()` のマッピングも更新すること。
+
+### 構成要素間の依存関係
+
+dotclaude/ 内の構成要素は相互に依存することがある:
+
+- `hooks/*.sh` → `bin/realpath` (guard-home-dir.sh が参照)
+- `hooks/*.sh` → `hooks/lib/hook-logger.sh` (共通ライブラリ)
+- `settings.json` の `hooks` セクション → `hooks/*.sh` のパス
+
+Docker 内で hooks が動作しない場合、まずこれらの依存関係を確認する。
+
 ## Worktree環境での注意
 
 claude-configはworktreeで開発することが多い。worktree環境では:
@@ -60,33 +85,58 @@ verify.shはTTY判定を内蔵しているので、ターミナルでもCLI環�
 
 ### Step 3: 検証項目チェックリスト
 
+#### 3a. 構造整合性チェック (毎回実施)
+
+dotclaude/ の全構成要素が Docker 内に正しくマッピングされているか確認する:
+
+```bash
+# dotclaude/ のトップレベル構成要素を列挙
+ls -1 /staging/
+
+# Docker 内の ~/.claude/ と比較
+ls -1 ~/.claude/
+
+# hooks が依存するバイナリの存在確認
+ls -la ~/.claude/bin/
+
+# settings.json の hooks パスが実在するか確認
+jq -r '.hooks // {} | .. | strings' ~/.claude/settings.json 2>/dev/null | \
+  grep -oE '/[^ "]+\.sh' | while read f; do
+    [ -f "$HOME/.claude/$f" ] || echo "MISSING: $f"
+  done
+```
+
+#### 3b. 構成要素別チェック
+
 設定変更の種類に応じて検証:
 
-#### settings.json 変更時
+##### settings.json 変更時
 ```bash
 jq '.permissions' ~/.claude/settings.json
 jq '.hooks' ~/.claude/settings.json
 jq '.enabledPlugins' ~/.claude/settings.json  # Docker内では全てfalse
 ```
 
-#### env.sh 変更時
+##### env.sh 変更時
 ```bash
 source ~/.claude/env.sh && env | grep -E '^(CLAUDE|ANTHROPIC|CLOUD_ML)'
 ```
 
-#### hooks 変更時
+##### hooks 変更時
 ```bash
 ls -la ~/.claude/hooks/
+# hooks の依存バイナリが存在するか確認
+ls -la ~/.claude/bin/
 bash ~/.claude/hooks/guard-home-dir.sh  # 直接テスト
 ```
 
-#### skills 変更時
+##### skills 変更時
 ```bash
 ls ~/.claude/skills/
 cat ~/.claude/skills/SKILL_NAME/SKILL.md
 ```
 
-#### CLAUDE-global.md 変更時
+##### CLAUDE-global.md 変更時
 ```bash
 cat ~/.claude/CLAUDE.md | head -20
 ```

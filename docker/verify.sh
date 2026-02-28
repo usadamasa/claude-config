@@ -134,6 +134,11 @@ sync_config() {
   # hooks/
   cp -a "$REPO_ROOT/dotclaude/hooks" "$STAGING_DIR/hooks"
 
+  # bin/ (hooks が参照するバイナリ: realpath 等)
+  if [ -d "$REPO_ROOT/dotclaude/bin" ]; then
+    cp -a "$REPO_ROOT/dotclaude/bin" "$STAGING_DIR/bin"
+  fi
+
   # skills/
   mkdir -p "$STAGING_DIR/skills"
   for skill_dir in "$REPO_ROOT/dotclaude/skills"/*/; do

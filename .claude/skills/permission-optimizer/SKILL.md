@@ -19,40 +19,65 @@ settings.jsonの`permissions.allow`/`permissions.deny`/`permissions.ask`に登�
 CLAUDE.md の「worktree 環境でのファイルパス解決」を参照し、worktree 判定を行う。
 worktree 環境の場合、以降のステップで settings.json のパスを `$(pwd)/dotclaude/settings.json` に読み替えること。
 
-### 1. 分析の実行
+### 1. 分析の実行(エージェント経由)
 
-以下のコマンドを実行してツール使用状況を集計する:
+**推奨: permission-auditor エージェントを使用する。**
 
-**通常リポジトリ:**
-```bash
-go run ./cmd/analyze-permissions --days 30
+コンテキスト圧迫を防ぐため、Task ツールで `permission-auditor` エージェントを起動する。エージェントが CLI を実行し、フル JSON を内部で処理して、コンパクトなサマリのみを返す。
+
+```
+Task(subagent_type="permission-auditor", prompt="パーミッション分析を実行してサマリを返してください")
 ```
 
-**worktree 環境:**
+**代替: CLI 直接実行(サマリモード)**
+
+エージェントを使わない場合は、CLI のサマリ出力を使う。**`--settings` は必ず指定すること。**
+
+まず settings.json のパスを解決する:
 ```bash
-go run ./cmd/analyze-permissions --days 30 --settings $(pwd)/dotclaude/settings.json --projects-dir ~/.claude/projects
+GIT_DIR=$(git rev-parse --git-dir)
+GIT_COMMON=$(git rev-parse --git-common-dir)
+if [ "$GIT_DIR" != "$GIT_COMMON" ]; then
+  SETTINGS_PATH="$(pwd)/dotclaude/settings.json"
+else
+  GIT_ROOT=$(git rev-parse --show-toplevel)
+  SETTINGS_PATH="$GIT_ROOT/dotclaude/settings.json"
+fi
 ```
 
-オプション:
+CLI を実行:
+```bash
+go run ./cmd/analyze-permissions --days 30 --settings "$SETTINGS_PATH" --projects-dir ~/.claude/projects
+```
+
+フル JSON が必要な場合は `--format json --output /tmp/report.json` を追加する。
+
+CLIオプション:
 - `--days N`: 集計期間を指定(デフォルト: 30日)
-- `--settings PATH`: settings.jsonのパスを指定(デフォルト: gitルートのsettings.json、なければ~/.claude/settings.json)
+- `--settings PATH`: settings.jsonのパスを指定(**必須**: 省略時は自動解決を試みるが、明示指定を推奨)
+- `--format summary|json`: 出力形式(デフォルト: summary)
+- `--output PATH`: フル JSON をファイルに書き出し(summary と併用可)
 
-### 2. 結果の確認
+### 2. サマリの確認
 
-出力はJSON形式で以下のセクションを含む:
+サマリ出力は以下のセクションを含む:
 
-- **metadata**: 分析の概要(期間、ファイル数、ツール呼び出し回数)
-- **current_allow**: 現在のallowリスト
-- **current_deny**: 現在のdenyリスト
-- **current_ask**: 現在のaskリスト
-- **recommendations.add**: 追加推奨パーミッション(safeカテゴリで未登録のもの)
-- **recommendations.review**: 要確認パーミッション(review/askカテゴリまたはdenyすべきもの)
-- **recommendations.unused**: 未使用パーミッション(リストにあるが使用されていない)
-- **recommendations.bare_entry_warnings**: ベアエントリ警告(修飾子なしのエントリ)
-- **recommendations.deny_bypass_warnings**: deny バイパスリスク警告(allow の Bash コマンドが deny の Read/Write をバイパスする)
-- **all_patterns**: 全パターンの使用統計
+- **[ADD to allow]**: 追加推奨パーミッション(safe カテゴリで未登録のもの、上位10件)
+- **[REVIEW]**: 要確認パーミッション(review/ask カテゴリ、deny バイパスリスク)
+- **[UNUSED]**: 未使用パーミッション(リストにあるが使用されていない)
+- **[WARNINGS]**: ベアエントリ警告、deny バイパスリスク警告、allow が deny を包含する警告
+- **Summary**: 現在の件数と推奨変更数
 
-### 3. settings.jsonの更新
+### 3. ユーザー確認ポイント
+
+settings.json を更新する前に、以下の方針をユーザーに確認する:
+
+1. **curl/wget の取り扱い**: deny に維持するか? (WebFetch 推奨。API テスト等で必要なら project local で allow に)
+2. **git remote 操作**: git push / git rebase を ask に維持するか? (安全性とフロー効率のトレードオフ)
+3. **破壊操作**: rm -rf の方針 (ask 推奨。deny にすると作業効率が低下)
+4. **開発ツールの配置先**: global vs project で適切か? (→ スコープ別ガイドライン参照)
+
+### 4. settings.jsonの更新
 
 ユーザーの承認を得た上で、以下の手順でsettings.jsonを更新する:
 
@@ -60,6 +85,24 @@ go run ./cmd/analyze-permissions --days 30 --settings $(pwd)/dotclaude/settings.
 2. パーミッション形式: `Tool(pattern:*)` (Bash) または `Tool(pattern)` (Read/Write/Edit)
 3. 許可エントリはアルファベット順にソート
 4. 不要と判断されたエントリは削除
+5. ベアエントリが含まれていないことを最終確認
+
+### 5. 変更後の検証
+
+設定変更は新しいセッションから有効になる。以下を確認:
+- git コマンド(status/commit/push)が期待通りに動作するか
+- deny 対象(curl, ssh 等)が拒否されるか
+- 新しいセッションでパーミッションプロンプトの頻度が適切か
+
+## スコープ別配置ガイドライン
+
+| スコープ | 用途 | 例 |
+|----------|------|-----|
+| global (`~/.claude/settings.json`) | プロジェクト横断の汎用コマンド | git, go, task, make, gh, docker |
+| project shared (`.claude/settings.json`) | プロジェクト固有ツール | npm, cargo, プロジェクト固有パス |
+| project local (`.claude/settings.local.json`) | 一時的・個人的パーミッション | gcloud, 一時的な curl 許可 |
+
+詳細は `references/recommended-settings.md` を参照。
 
 ## パーミッション評価順序の注意
 

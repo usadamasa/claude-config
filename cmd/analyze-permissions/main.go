@@ -31,11 +31,19 @@ type ReportMetadata struct {
 
 // Recommendations はカテゴリ別の推奨事項を含む｡
 type Recommendations struct {
-	Add                []PatternRecommendation `json:"add"`
-	Review             []PatternRecommendation `json:"review"`
-	Unused             []UnusedEntry           `json:"unused"`
-	BareEntryWarnings  []string                `json:"bare_entry_warnings,omitempty"`
-	DenyBypassWarnings []DenyBypassWarning     `json:"deny_bypass_warnings,omitempty"`
+	Add                    []PatternRecommendation `json:"add"`
+	Review                 []PatternRecommendation `json:"review"`
+	Unused                 []UnusedEntry           `json:"unused"`
+	BareEntryWarnings      []string                `json:"bare_entry_warnings,omitempty"`
+	DenyBypassWarnings     []DenyBypassWarning     `json:"deny_bypass_warnings,omitempty"`
+	AllowEncompassesDeny   []AllowEncompassesDeny   `json:"allow_encompasses_deny,omitempty"`
+}
+
+// AllowEncompassesDeny は allow エントリが deny エントリを包含するパターン｡
+type AllowEncompassesDeny struct {
+	AllowEntry string `json:"allow_entry"`
+	DenyEntry  string `json:"deny_entry"`
+	Note       string `json:"note"`
 }
 
 // DenyBypassWarning は allow の Bash コマンドが deny の Read/Write をバイパスするリスク｡
@@ -174,6 +182,9 @@ func GenerateReport(scanResults []ScanResult, allow, deny, ask []string, days, f
 	// deny バイパスリスクのクロスチェック
 	denyBypassWarnings := detectDenyBypassWarnings(allow, deny)
 
+	// allow が deny を包含するパターンの検出
+	allowEncompassesDeny := detectAllowEncompassesDeny(allow, deny)
+
 	// ソート
 	sort.Slice(allPatterns, func(i, j int) bool { return allPatterns[i].Count > allPatterns[j].Count })
 	sort.Slice(addRecs, func(i, j int) bool { return addRecs[i].Count > addRecs[j].Count })
@@ -190,11 +201,12 @@ func GenerateReport(scanResults []ScanResult, allow, deny, ask []string, days, f
 		CurrentDeny:  deny,
 		CurrentAsk:   ask,
 		Recommendations: Recommendations{
-			Add:                addRecs,
-			Review:             reviewRecs,
-			Unused:             unusedRecs,
-			BareEntryWarnings:  bareWarnings,
-			DenyBypassWarnings: denyBypassWarnings,
+			Add:                  addRecs,
+			Review:               reviewRecs,
+			Unused:               unusedRecs,
+			BareEntryWarnings:    bareWarnings,
+			DenyBypassWarnings:   denyBypassWarnings,
+			AllowEncompassesDeny: allowEncompassesDeny,
 		},
 		AllPatterns: allPatterns,
 	}
@@ -234,6 +246,36 @@ func detectDenyBypassWarnings(allow, deny []string) []DenyBypassWarning {
 					AllowEntry:   allowEntry,
 					BypassedDeny: denyEntry,
 					Risk:         cat.Reason,
+				})
+			}
+		}
+	}
+	return warnings
+}
+
+// detectAllowEncompassesDeny は allow エントリが deny エントリを包含するパターンを検出する｡
+// 例: allow に Bash(gh:*) があり deny に Bash(gh auth:*) がある場合｡
+func detectAllowEncompassesDeny(allow, deny []string) []AllowEncompassesDeny {
+	var warnings []AllowEncompassesDeny
+	for _, allowEntry := range allow {
+		allowTool, allowPattern, allowOk := ParsePermissionEntry(allowEntry)
+		if !allowOk || allowPattern == "" {
+			continue
+		}
+		for _, denyEntry := range deny {
+			denyTool, denyPattern, denyOk := ParsePermissionEntry(denyEntry)
+			if !denyOk || denyPattern == "" {
+				continue
+			}
+			if allowTool != denyTool {
+				continue
+			}
+			// allow パターンが deny パターンのプレフィックスか判定
+			if matchPattern(denyPattern, allowPattern) && allowPattern != denyPattern {
+				warnings = append(warnings, AllowEncompassesDeny{
+					AllowEntry: allowEntry,
+					DenyEntry:  denyEntry,
+					Note:       fmt.Sprintf("allow の %s が deny の %s を包含 (deny が優先されるが意図の確認を推奨)", allowEntry, denyEntry),
 				})
 			}
 		}
@@ -294,6 +336,8 @@ func main() {
 	days := flag.Int("days", 30, "集計期間(日数)")
 	settingsPath := flag.String("settings", "", "settings.json パス (デフォルト: git ルートの settings.json または ~/.claude/settings.json)")
 	projectsDirFlag := flag.String("projects-dir", "", "projects ディレクトリパス (デフォルト: ~/.claude/projects)")
+	format := flag.String("format", "summary", "出力形式: summary (テキストサマリ) または json (フル JSON)")
+	outputPath := flag.String("output", "", "フル JSON の出力先ファイルパス (summary 形式と併用可)")
 	flag.Parse()
 
 	home, err := os.UserHomeDir()
@@ -321,7 +365,7 @@ func main() {
 	// パーミッション読み込み
 	allow, deny, ask, err := LoadPermissions(*settingsPath)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "settings.json の読み込みに失敗: %v\n", err)
+		fmt.Fprintf(os.Stderr, "settings.json の読み込みに失敗 (%s): %v\n", *settingsPath, err)
 		os.Exit(1)
 	}
 
@@ -334,13 +378,42 @@ func main() {
 
 	filesScanned := countUniqueFiles(scanResults)
 
-	// レポート生成・出力
+	// レポート生成
 	report := GenerateReport(scanResults, allow, deny, ask, *days, filesScanned)
 
-	encoder := json.NewEncoder(os.Stdout)
-	encoder.SetIndent("", "  ")
-	if err := encoder.Encode(report); err != nil {
-		fmt.Fprintf(os.Stderr, "レポートの出力に失敗: %v\n", err)
+	// --output 指定時はフル JSON をファイルに書き出し
+	if *outputPath != "" {
+		f, err := os.Create(*outputPath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "出力ファイルの作成に失敗: %v\n", err)
+			os.Exit(1)
+		}
+		encoder := json.NewEncoder(f)
+		encoder.SetIndent("", "  ")
+		if err := encoder.Encode(report); err != nil {
+			_ = f.Close()
+			fmt.Fprintf(os.Stderr, "JSON の書き出しに失敗: %v\n", err)
+			os.Exit(1)
+		}
+		if err := f.Close(); err != nil {
+			fmt.Fprintf(os.Stderr, "出力ファイルのクローズに失敗: %v\n", err)
+			os.Exit(1)
+		}
+	}
+
+	// stdout への出力
+	switch *format {
+	case "json":
+		encoder := json.NewEncoder(os.Stdout)
+		encoder.SetIndent("", "  ")
+		if err := encoder.Encode(report); err != nil {
+			fmt.Fprintf(os.Stderr, "レポートの出力に失敗: %v\n", err)
+			os.Exit(1)
+		}
+	case "summary":
+		fmt.Print(FormatSummary(report, *outputPath))
+	default:
+		fmt.Fprintf(os.Stderr, "不明な出力形式: %s (summary または json を指定)\n", *format)
 		os.Exit(1)
 	}
 }

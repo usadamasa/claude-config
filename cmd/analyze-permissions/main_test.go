@@ -240,6 +240,62 @@ func TestGenerateReportDenyBypassWarnings(t *testing.T) {
 	})
 }
 
+func TestDetectAllowEncompassesDeny(t *testing.T) {
+	t.Run("Bash(gh:*) が Bash(gh auth:*) を包含する", func(t *testing.T) {
+		allow := []string{"Bash(gh:*)"}
+		deny := []string{"Bash(gh auth:*)"}
+
+		report := GenerateReport(nil, allow, deny, nil, 30, 0)
+
+		if len(report.Recommendations.AllowEncompassesDeny) == 0 {
+			t.Error("AllowEncompassesDeny が空")
+		}
+		found := false
+		for _, w := range report.Recommendations.AllowEncompassesDeny {
+			if w.AllowEntry == "Bash(gh:*)" && w.DenyEntry == "Bash(gh auth:*)" {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("Bash(gh:*) → Bash(gh auth:*) 包含警告が見つからない: %+v", report.Recommendations.AllowEncompassesDeny)
+		}
+	})
+
+	t.Run("同一ツール同一パターンでは警告しない", func(t *testing.T) {
+		allow := []string{"Bash(git status:*)"}
+		deny := []string{"Bash(git status:*)"}
+
+		report := GenerateReport(nil, allow, deny, nil, 30, 0)
+
+		if len(report.Recommendations.AllowEncompassesDeny) != 0 {
+			t.Errorf("同一パターンで警告が出ている: %+v", report.Recommendations.AllowEncompassesDeny)
+		}
+	})
+
+	t.Run("異なるツールでは警告しない", func(t *testing.T) {
+		allow := []string{"Bash(gh:*)"}
+		deny := []string{"Read(~/.ssh/**)"}
+
+		report := GenerateReport(nil, allow, deny, nil, 30, 0)
+
+		if len(report.Recommendations.AllowEncompassesDeny) != 0 {
+			t.Errorf("異なるツールで警告が出ている: %+v", report.Recommendations.AllowEncompassesDeny)
+		}
+	})
+
+	t.Run("Read ワイルドカードで包含検出", func(t *testing.T) {
+		allow := []string{"Read(~/src/**)"}
+		deny := []string{"Read(~/src/secret/**)"}
+
+		report := GenerateReport(nil, allow, deny, nil, 30, 0)
+
+		if len(report.Recommendations.AllowEncompassesDeny) == 0 {
+			t.Error("Read ワイルドカード包含が検出されない")
+		}
+	})
+}
+
 func TestCountUniqueFiles(t *testing.T) {
 	results := []ScanResult{
 		{FilePath: "a.jsonl"},

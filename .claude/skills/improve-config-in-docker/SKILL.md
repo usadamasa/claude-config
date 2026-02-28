@@ -16,7 +16,8 @@ claude-config設定の変更をDockerコンテナで即座に検証し、改善�
 ## Context
 
 - Current branch: !`git branch --show-current`
-- Worktree check: !`test "$(git rev-parse --git-dir)" != "$(git rev-parse --git-common-dir)" && echo "worktree" || echo "normal repo"`
+- Git dir: !`git rev-parse --git-dir`
+- Git common dir: !`git rev-parse --git-common-dir`
 - Docker image: !`docker image inspect claude-config-verify --format '{{.ID}}' 2>/dev/null || echo "not built"`
 - Changed files: !`git diff --name-only HEAD 2>/dev/null | grep -E '^dotclaude/' || echo "no dotclaude changes"`
 

@@ -66,11 +66,10 @@ if [ -d /sessions ]; then
   ln -sf /sessions /home/claude/.claude/projects
 fi
 
-# NOTE: curl | bash によるインストールはサプライチェーンリスクがある。
-# POCとしてはネイティブインストーラーを使用するが、
-# 本番運用ではバージョン固定+チェックサム検証を推奨する。
-if [ ! -x /home/claude/.local/bin/claude ]; then
-  su -s /bin/bash claude -c 'curl -fsSL https://claude.ai/install.sh | bash'
+# ローカル環境と同じバージョンをネイティブインストーラーでインストール
+INSTALLED_VERSION=$(/home/claude/.local/bin/claude --version 2>/dev/null | awk '{print $1}' || echo "none")
+if [ "$INSTALLED_VERSION" != "${CLAUDE_VERSION:-}" ]; then
+  su -s /bin/bash claude -c "curl -fsSL https://claude.ai/install.sh | bash -s ${CLAUDE_VERSION}"
 fi
 
 # claudeユーザーで実行
@@ -154,8 +153,11 @@ docker volume create "$VOLUME_NAME" > /dev/null 2>&1 || true
 docker volume rm "$CONFIG_VOLUME_NAME" > /dev/null 2>&1 || true
 docker volume create "$CONFIG_VOLUME_NAME" > /dev/null 2>&1 || true
 
+# ローカルのClaude Codeバージョンを検出してコンテナに渡す
+CLAUDE_VERSION=$(claude --version 2>/dev/null | awk '{print $1}' || echo "latest")
+
 # ホスト環境変数を透過 (DISABLE_AUTOUPDATERはデフォルトで有効)
-ENV_FLAGS=(-e "DISABLE_AUTOUPDATER=${DISABLE_AUTOUPDATER:-1}")
+ENV_FLAGS=(-e "DISABLE_AUTOUPDATER=${DISABLE_AUTOUPDATER:-1}" -e "CLAUDE_VERSION=$CLAUDE_VERSION")
 for var in CLAUDE_CODE_USE_VERTEX ANTHROPIC_VERTEX_PROJECT_ID \
   CLOUD_ML_REGION ANTHROPIC_MODEL \
   DISABLE_PROMPT_CACHING ANTHROPIC_DEFAULT_HAIKU_MODEL \

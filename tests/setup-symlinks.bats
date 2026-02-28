@@ -148,17 +148,17 @@ teardown() {
 }
 
 @test "finalize-pr スキルに git rev-parse による worktree 判定の記載がある" {
-  grep -q "git rev-parse --git-dir" "$REPO_ROOT/dotclaude/skills/usadamasa-finalize-pr/SKILL.md"
-  grep -q "git rev-parse --git-common-dir" "$REPO_ROOT/dotclaude/skills/usadamasa-finalize-pr/SKILL.md"
+  grep -q "git rev-parse --git-dir" "$REPO_ROOT/dotclaude/skills/finalize-pr/SKILL.md"
+  grep -q "git rev-parse --git-common-dir" "$REPO_ROOT/dotclaude/skills/finalize-pr/SKILL.md"
 }
 
 @test "finalize-pr スキルに cat .git による判定が残っていない" {
-  ! grep -q 'cat \.git' "$REPO_ROOT/dotclaude/skills/usadamasa-finalize-pr/SKILL.md"
+  ! grep -q 'cat \.git' "$REPO_ROOT/dotclaude/skills/finalize-pr/SKILL.md"
 }
 
 @test "session-handoff スキルに git rev-parse による worktree 判定の記載がある" {
-  grep -q "git rev-parse --git-dir" "$REPO_ROOT/dotclaude/skills/usadamasa-session-handoff/SKILL.md"
-  grep -q "git rev-parse --git-common-dir" "$REPO_ROOT/dotclaude/skills/usadamasa-session-handoff/SKILL.md"
+  grep -q "git rev-parse --git-dir" "$REPO_ROOT/dotclaude/skills/session-handoff/SKILL.md"
+  grep -q "git rev-parse --git-common-dir" "$REPO_ROOT/dotclaude/skills/session-handoff/SKILL.md"
 }
 
 @test "claude-config-management に worktree 環境チェックの記載がある" {

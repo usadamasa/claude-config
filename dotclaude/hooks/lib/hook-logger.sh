@@ -72,3 +72,9 @@ log_info() {
   local msg="$1"
   echo "$(_log_prefix) INFO   $msg" >&2
 }
+
+# エラーメッセージ (常に出力、重大度: ERROR)
+log_error() {
+  local msg="$1"
+  echo "$(_log_prefix) ERROR  $msg" >&2
+}

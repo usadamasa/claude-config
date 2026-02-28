@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 # ホームディレクトリ走査防止フック
 # 許可パス以外の ${HOME} 配下アクセスを deny する
 readonly INPUT=$(cat)
@@ -19,6 +20,9 @@ case "$TOOL_NAME" in
   Read|Edit|Write)
     FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
     ;;
+  NotebookEdit)
+    FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.notebook_path // empty')
+    ;;
   Glob|Grep)
     FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.path // empty')
     ;;
@@ -36,6 +40,8 @@ fi
 if [[ "$FILE_PATH" != /* ]]; then
   FILE_PATH="$PROJECT_DIR/$FILE_PATH"
 fi
+# シンボリックリンク経由のパス走査を防止するため正規化
+FILE_PATH=$(realpath -m "$FILE_PATH")
 readonly FILE_PATH
 
 # ホームディレクトリ配下かチェック

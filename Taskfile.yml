@@ -113,3 +113,16 @@ tasks:
           fi
         done
       - echo "🗑️ Claude設定の symlink を削除しました"
+
+  docker:verify:
+    desc: Dockerコンテナで現在のclaude-config設定を検証
+    cmds:
+      - ./docker/verify.sh {{.CLI_ARGS}}
+
+  docker:clean:
+    desc: 検証用Dockerリソースを削除
+    cmds:
+      - docker image rm -f claude-config-verify || true
+      - docker volume rm claude-config-verify-local || true
+      - docker volume rm claude-config-verify-dotclaude || true
+      - rm -rf "${XDG_CACHE_HOME:-$HOME/.cache}/claude-config-verify"

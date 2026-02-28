@@ -73,10 +73,10 @@ aqua install
 ```bash
 # golangci-lint が入っていればそのままベースライン測定できる
 # (go-arch-lint がなくても golangci-lint 部分だけ測定される)
-bash ~/.claude/skills/usadamasa-go-arch-metrics/scripts/baseline.sh ./
+bash ~/.claude/skills/go-arch-metrics/scripts/baseline.sh ./
 
 # go-arch-lint も使いたい場合は aqua でインストールしてから:
-# aqua install && bash ~/.claude/skills/usadamasa-go-arch-metrics/scripts/baseline.sh ./
+# aqua install && bash ~/.claude/skills/go-arch-metrics/scripts/baseline.sh ./
 ```
 
 出力されたサマリを確認し、違反件数と重大度を記録する。

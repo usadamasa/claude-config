@@ -59,6 +59,7 @@
       "Bash(ls:*)",
       "Bash(make:*)",
       "Bash(mkdir:*)",
+      "Bash(obsidian:*)",
       "Bash(pre-commit:*)",
       "Bash(pwd:*)",
       "Bash(ruff:*)",

@@ -211,5 +211,5 @@ tasks:
 
   lint:baseline:
     desc: "ベースライン測定 (現状把握)"
-    cmd: bash ~/.claude/skills/usadamasa-go-arch-metrics/scripts/baseline.sh ./
+    cmd: bash ~/.claude/skills/go-arch-metrics/scripts/baseline.sh ./
 ```

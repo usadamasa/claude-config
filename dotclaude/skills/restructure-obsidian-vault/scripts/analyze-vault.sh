@@ -14,9 +14,14 @@ echo "=== Obsidian Vault 構造分析 ==="
 echo "Vault: $VAULT_PATH"
 echo ""
 
+# 一時ファイル
+actual_list=$(mktemp)
+documented_list=$(mktemp)
+actual_detail=$(mktemp)
+trap 'rm -f "$actual_list" "$documented_list" "$actual_detail"' EXIT
+
 # トップレベルディレクトリを列挙 (.で始まるもの除外)
 echo "--- 実際のディレクトリ一覧 ---"
-declare -A actual_dirs
 while IFS= read -r dir; do
     dirname=$(basename "$dir")
     # .で始まるディレクトリを除外
@@ -24,7 +29,8 @@ while IFS= read -r dir; do
         continue
     fi
     file_count=$(find "$dir" -type f -name '*.md' 2>/dev/null | wc -l | tr -d ' ')
-    actual_dirs["${dirname}/"]="$file_count"
+    echo "${dirname}/" >> "$actual_list"
+    printf "%s/\t%s\n" "$dirname" "$file_count" >> "$actual_detail"
     printf "  %-30s %4d files\n" "${dirname}/" "$file_count"
 done < <(find "$VAULT_PATH" -maxdepth 1 -mindepth 1 -type d | sort)
 
@@ -38,7 +44,6 @@ if [[ ! -f "$CLAUDE_MD" ]]; then
 fi
 
 echo "--- CLAUDE.md 記載ディレクトリ ---"
-declare -A documented_dirs
 in_table=false
 while IFS= read -r line; do
     # ディレクトリ構成テーブルの開始を検出
@@ -59,7 +64,7 @@ while IFS= read -r line; do
     if $in_table; then
         dir_name=$(echo "$line" | sed -n 's/.*`\([^`]*\/\)`.*/\1/p')
         if [[ -n "$dir_name" ]]; then
-            documented_dirs["$dir_name"]=1
+            echo "$dir_name" >> "$documented_list"
             echo "  $dir_name"
         fi
     fi
@@ -67,25 +72,25 @@ done < "$CLAUDE_MD"
 
 echo ""
 
-# 差分を計算
+# ソートして差分を計算
+sort -o "$actual_list" "$actual_list"
+sort -o "$documented_list" "$documented_list"
+
 echo "--- 差分レポート ---"
 has_diff=false
 
-# 実在するが未記載のディレクトリ
-for dir in "${!actual_dirs[@]}"; do
-    if [[ -z "${documented_dirs[$dir]:-}" ]]; then
-        echo "  [未記載] $dir (${actual_dirs[$dir]} files) - CLAUDE.mdに記載なし"
-        has_diff=true
-    fi
-done
+# 実在するが未記載のディレクトリ (actual_list にのみ存在)
+while IFS= read -r dir; do
+    file_count=$(awk -F'\t' -v d="$dir" '$1 == d {print $2}' "$actual_detail")
+    echo "  [未記載] $dir (${file_count} files) - CLAUDE.mdに記載なし"
+    has_diff=true
+done < <(comm -23 "$actual_list" "$documented_list")
 
-# 記載あるが存在しないディレクトリ
-for dir in "${!documented_dirs[@]}"; do
-    if [[ -z "${actual_dirs[$dir]:-}" ]]; then
-        echo "  [不存在] $dir - CLAUDE.mdに記載あるが実際には存在しない"
-        has_diff=true
-    fi
-done
+# 記載あるが存在しないディレクトリ (documented_list にのみ存在)
+while IFS= read -r dir; do
+    echo "  [不存在] $dir - CLAUDE.mdに記載あるが実際には存在しない"
+    has_diff=true
+done < <(comm -13 "$actual_list" "$documented_list")
 
 if [[ "$has_diff" == false ]]; then
     echo "  差分なし - CLAUDE.mdと実態が一致しています"

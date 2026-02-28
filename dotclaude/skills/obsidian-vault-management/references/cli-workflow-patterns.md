@@ -75,7 +75,7 @@ done
 
 ```bash
 # verbose で行番号を取得してループ
-obsidian tasks todo verbose file=日誌 vault=work | grep -oP ':\K\d+' | while read -r line; do
+obsidian tasks todo verbose file=日誌 vault=work | awk -F: '{print $2}' | while read -r line; do
   obsidian task file=日誌 line=$line done vault=work
 done
 ```
@@ -120,7 +120,7 @@ done
 obsidian sync off vault=work
 
 # バッチ操作
-for f in $(obsidian files folder=old_folder vault=work); do
+obsidian files folder=old_folder vault=work | while IFS= read -r f; do
   obsidian move path="$f" to=99_Archives/ vault=work
 done
 

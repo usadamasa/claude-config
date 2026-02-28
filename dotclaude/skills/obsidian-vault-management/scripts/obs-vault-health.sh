@@ -3,11 +3,11 @@
 # Usage: obs-vault-health.sh [vault=<name>]
 set -euo pipefail
 
-# vault= オプションを透過的に渡す
-VAULT_OPT=""
+# vault= オプションを透過的に渡す (配列で安全に引数を扱う)
+VAULT_ARGS=()
 for arg in "$@"; do
   case "$arg" in
-    vault=*) VAULT_OPT="$arg" ;;
+    vault=*) VAULT_ARGS+=("$arg") ;;
   esac
 done
 
@@ -16,15 +16,15 @@ obs_val() {
   obsidian "$@" 2>/dev/null
 }
 
-vault_name=$(obs_val vault ${VAULT_OPT} info=name || echo "unknown")
-file_count=$(obs_val files ${VAULT_OPT} total || echo "?")
-folder_count=$(obs_val folders ${VAULT_OPT} total || echo "?")
-orphan_count=$(obs_val orphans ${VAULT_OPT} total || echo "?")
-deadend_count=$(obs_val deadends ${VAULT_OPT} total || echo "?")
-unresolved_count=$(obs_val unresolved ${VAULT_OPT} total || echo "?")
-task_todo=$(obs_val tasks todo ${VAULT_OPT} total || echo "?")
-task_done=$(obs_val tasks done ${VAULT_OPT} total || echo "?")
-tag_count=$(obs_val tags ${VAULT_OPT} total || echo "?")
+vault_name=$(obs_val vault "${VAULT_ARGS[@]}" info=name || echo "unknown")
+file_count=$(obs_val files "${VAULT_ARGS[@]}" total || echo "?")
+folder_count=$(obs_val folders "${VAULT_ARGS[@]}" total || echo "?")
+orphan_count=$(obs_val orphans "${VAULT_ARGS[@]}" total || echo "?")
+deadend_count=$(obs_val deadends "${VAULT_ARGS[@]}" total || echo "?")
+unresolved_count=$(obs_val unresolved "${VAULT_ARGS[@]}" total || echo "?")
+task_todo=$(obs_val tasks todo "${VAULT_ARGS[@]}" total || echo "?")
+task_done=$(obs_val tasks done "${VAULT_ARGS[@]}" total || echo "?")
+tag_count=$(obs_val tags "${VAULT_ARGS[@]}" total || echo "?")
 
 # orphan/deadend 率を計算
 if [[ "$file_count" =~ ^[0-9]+$ ]] && [ "$file_count" -gt 0 ]; then

@@ -28,7 +28,7 @@ var targetToolNames = map[string]bool{
 func LoadPermissions(settingsPath string) (allow, deny, ask []string, err error) {
 	data, err := os.ReadFile(settingsPath)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("settings ファイルの読み込みに失敗: %w", err)
+		return nil, nil, nil, err
 	}
 
 	var settings settingsJSON

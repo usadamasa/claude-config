@@ -21,5 +21,6 @@ stats-cache.json
 /debug
 /dotclaude/env.sh
 /dotclaude/bin/
+/docker/bin/
 /.worktrees
 /.task

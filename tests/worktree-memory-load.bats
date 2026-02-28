@@ -51,7 +51,8 @@ teardown() {
   [ "$status" -eq 0 ]
   [ -f "$WORKTREE_MEM/debugging.md" ]
   # debugging.md にマーカーが含まれないこと
-  ! grep -q "<!-- worktree-memory-loaded -->" "$WORKTREE_MEM/debugging.md"
+  run grep -q "<!-- worktree-memory-loaded -->" "$WORKTREE_MEM/debugging.md"
+  [ "$status" -ne 0 ]
 }
 
 @test "親に複数ファイル存在: 全てコピーされる" {

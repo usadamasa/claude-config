@@ -162,7 +162,7 @@ run_checks() {
   local total=0
 
   check() {
-    local section="$1"
+    local _section="$1" # Used for categorization context
     local name="$2"
     local result="$3"
     total=$((total + 1))
@@ -345,7 +345,8 @@ run_checks() {
   while IFS= read -r line; do
     case "$line" in
       "=== "*)
-        current_section=$(echo "$line" | sed 's/=== \(.*\) ===/\1/')
+        current_section="${line//=== /}"
+        current_section="${current_section// ===/}"
         echo ""
         echo "=== $current_section ==="
         ;;

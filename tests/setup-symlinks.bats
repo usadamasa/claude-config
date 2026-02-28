@@ -29,7 +29,8 @@ teardown() {
 }
 
 @test "CLAUDE-global.md と CLAUDE.md の内容が異なる" {
-  ! diff -q "$REPO_ROOT/dotclaude/CLAUDE-global.md" "$REPO_ROOT/CLAUDE.md" >/dev/null 2>&1
+  run diff -q "$REPO_ROOT/dotclaude/CLAUDE-global.md" "$REPO_ROOT/CLAUDE.md"
+  [ "$status" -ne 0 ]
 }
 
 # =============================================================================
@@ -78,9 +79,12 @@ teardown() {
 
 @test "CLAUDE.md (プロジェクトスコープ) にグローバル設定が含まれない" {
   # プロジェクト CLAUDE.md にはグローバル設定特有のセクションがない
-  ! grep -q "Test-Driven Development" "$REPO_ROOT/CLAUDE.md"
-  ! grep -q "CI 優先ポリシー" "$REPO_ROOT/CLAUDE.md"
-  ! grep -q "セッション管理" "$REPO_ROOT/CLAUDE.md"
+  run grep -q "Test-Driven Development" "$REPO_ROOT/CLAUDE.md"
+  [ "$status" -ne 0 ]
+  run grep -q "CI 優先ポリシー" "$REPO_ROOT/CLAUDE.md"
+  [ "$status" -ne 0 ]
+  run grep -q "セッション管理" "$REPO_ROOT/CLAUDE.md"
+  [ "$status" -ne 0 ]
 }
 
 @test "CLAUDE.md (プロジェクトスコープ) にプロジェクト固有の情報が含まれる" {
@@ -100,7 +104,8 @@ teardown() {
 @test "Taskfile.yml の setup タスクのファイルループに CLAUDE.md が含まれない" {
   # for file in ... ループから CLAUDE.md が除外されている
   # (CLAUDE-global.md は別途処理されるため)
-  ! grep -E 'for file in.*CLAUDE\.md' "$REPO_ROOT/Taskfile.yml"
+  run grep -E 'for file in.*CLAUDE\.md' "$REPO_ROOT/Taskfile.yml"
+  [ "$status" -ne 0 ]
 }
 
 # =============================================================================
@@ -144,7 +149,8 @@ teardown() {
 }
 
 @test "CLAUDE-global.md に cat .git による判定が残っていない" {
-  ! grep -q 'cat \.git' "$REPO_ROOT/dotclaude/CLAUDE-global.md"
+  run grep -q 'cat \.git' "$REPO_ROOT/dotclaude/CLAUDE-global.md"
+  [ "$status" -ne 0 ]
 }
 
 @test "finalize-pr スキルに git rev-parse による worktree 判定の記載がある" {
@@ -153,7 +159,8 @@ teardown() {
 }
 
 @test "finalize-pr スキルに cat .git による判定が残っていない" {
-  ! grep -q 'cat \.git' "$REPO_ROOT/dotclaude/skills/finalize-pr/SKILL.md"
+  run grep -q 'cat \.git' "$REPO_ROOT/dotclaude/skills/finalize-pr/SKILL.md"
+  [ "$status" -ne 0 ]
 }
 
 @test "session-handoff スキルに git rev-parse による worktree 判定の記載がある" {

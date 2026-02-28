@@ -49,8 +49,22 @@ jobs:
       - name: Run bats tests
         run: bats tests/
 
+  shellcheck:
+    name: shellcheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install shellcheck
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y shellcheck
+
+      - name: Run shellcheck
+        run: find . \( -name "*.sh" -o -name "*.bats" -o -name ".envrc" \) -not -path "./.git/*" | xargs shellcheck
+
   ci-status-check:
-    needs: [go-test, bats-test]
+    needs: [go-test, bats-test, shellcheck]
     if: failure()
     runs-on: ubuntu-latest
     timeout-minutes: 10

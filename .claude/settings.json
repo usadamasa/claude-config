@@ -13,9 +13,23 @@
       "Bash(ghq root:*)",
       "Bash(git check-ignore:*)",
       "Bash(pup:*)",
+      "Bash(shellcheck:*)",
       "mcp__google-dev-knowledge__get_document",
       "mcp__google-dev-knowledge__search_documents",
       "Skill(ralph-loop:cancel-ralph)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/shellcheck-on-write.sh"
+          }
+        ]
+      }
     ]
   }
 }

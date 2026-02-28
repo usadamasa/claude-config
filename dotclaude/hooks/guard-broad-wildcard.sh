@@ -2,7 +2,8 @@
 set -euo pipefail
 # 広域ワイルドカードパーミッション自動除去フック
 # SessionStart 時に settings.local.json から広域パターンを除去する
-readonly INPUT=$(cat)
+INPUT=$(cat)
+readonly INPUT
 
 # SCRIPT_DIR の解決 (テスト時にオーバーライド可能)
 if [ -z "${SCRIPT_DIR:-}" ]; then
@@ -15,6 +16,7 @@ if [ ! -f "$SCRIPT_DIR/lib/hook-logger.sh" ]; then
   echo "ERROR: [$HOOK_NAME] hook-logger.sh not found at $SCRIPT_DIR/lib/hook-logger.sh" >&2
   exit 1
 fi
+# shellcheck disable=SC1091 # Dynamically resolved path
 source "$SCRIPT_DIR/lib/hook-logger.sh"
 
 # jq の存在チェック

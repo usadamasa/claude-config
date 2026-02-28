@@ -135,7 +135,8 @@ teardown() {
   [ "$status" -eq 0 ]
   [ -f "$PARENT_MEM/MEMORY.md" ]
   # マーカー行が除去されていること
-  ! grep -q "<!-- worktree-memory-loaded -->" "$PARENT_MEM/MEMORY.md"
+  run grep -q "<!-- worktree-memory-loaded -->" "$PARENT_MEM/MEMORY.md"
+  [ "$status" -ne 0 ]
   # 内容は保持されること
   [[ "$(cat "$PARENT_MEM/MEMORY.md")" == *"ロードされた内容"* ]]
   [[ "$(cat "$PARENT_MEM/MEMORY.md")" == *"新規追記"* ]]

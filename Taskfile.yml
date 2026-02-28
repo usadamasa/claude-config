@@ -116,7 +116,7 @@ tasks:
       - echo "🗑️ Claude設定の symlink を削除しました"
 
   build:hooks-bin:
-    desc: フックが使う Go バイナリをビルド
+    desc: フックが使う Go バイナリをビルド (ホスト用)
     cmds:
       - mkdir -p dotclaude/bin
       - go build -o dotclaude/bin/realpath ./cmd/realpath
@@ -125,8 +125,28 @@ tasks:
     generates:
       - dotclaude/bin/realpath
 
+  build:docker-bin:
+    desc: Docker (Linux) 用 Go バイナリをクロスコンパイル
+    cmds:
+      - mkdir -p docker/bin
+      - GOOS=linux go build -o docker/bin/realpath ./cmd/realpath
+      - GOOS=linux go build -o docker/bin/analyze-permissions ./cmd/analyze-permissions
+      - GOOS=linux go build -o docker/bin/analyze-webfetch ./cmd/analyze-webfetch
+      - GOOS=linux go build -o docker/bin/analyze-tokens ./cmd/analyze-tokens
+    sources:
+      - cmd/realpath/*.go
+      - cmd/analyze-permissions/*.go
+      - cmd/analyze-webfetch/*.go
+      - cmd/analyze-tokens/*.go
+    generates:
+      - docker/bin/realpath
+      - docker/bin/analyze-permissions
+      - docker/bin/analyze-webfetch
+      - docker/bin/analyze-tokens
+
   docker:verify:
     desc: Dockerコンテナで現在のclaude-config設定を検証
+    deps: [build:docker-bin]
     cmds:
       - ./docker/verify.sh {{.CLI_ARGS}}
 

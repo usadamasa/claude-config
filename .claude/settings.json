@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./docker/verify.sh:*)",
+      "Bash(brew info:*)",
+      "Bash(docker image:*)",
+      "Bash(docker volume:*)",
+      "Bash(gcloud alpha:*)",
+      "Bash(gcloud beta traces:*)",
+      "Bash(gcloud help:*)",
+      "Bash(gcloud logging:*)",
+      "Bash(ghq list:*)",
+      "Bash(ghq root:*)",
+      "Bash(git check-ignore:*)",
+      "Bash(pup:*)",
+      "mcp__google-dev-knowledge__get_document",
+      "mcp__google-dev-knowledge__search_documents",
+      "Skill(ralph-loop:cancel-ralph)"
+    ]
+  }
+}

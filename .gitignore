@@ -20,4 +20,6 @@ stats-cache.json
 /agent-memory
 /debug
 /dotclaude/env.sh
+/dotclaude/bin/
 /.worktrees
+/.task

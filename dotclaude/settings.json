@@ -55,8 +55,6 @@
       "Bash(go vet:*)",
       "Bash(goenv:*)",
       "Bash(golangci-lint:*)",
-      "Bash(chmod:*)",
-      "Bash(cp:*)",
       "Bash(jq:*)",
       "Bash(ls:*)",
       "Bash(make:*)",

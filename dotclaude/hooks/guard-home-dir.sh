@@ -41,7 +41,11 @@ if [[ "$FILE_PATH" != /* ]]; then
   FILE_PATH="$PROJECT_DIR/$FILE_PATH"
 fi
 # シンボリックリンク経由のパス走査を防止するため正規化
-FILE_PATH=$(realpath -m "$FILE_PATH")
+# macOS の BSD realpath は -m をサポートしないため Go 実装で代替
+HOOK_REAL_PATH=$(readlink "$0" 2>/dev/null || echo "$0")
+HOOK_DIR=$(cd "$(dirname "$HOOK_REAL_PATH")" && pwd)
+REALPATH_BIN="$HOOK_DIR/../bin/realpath"
+FILE_PATH=$("$REALPATH_BIN" "$FILE_PATH")
 readonly FILE_PATH
 
 # ホームディレクトリ配下かチェック

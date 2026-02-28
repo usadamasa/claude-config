@@ -62,6 +62,7 @@ while IFS= read -r line; do
     fi
     # テーブル行からディレクトリ名を抽出 (| `dirname/` | ... | 形式)
     if $in_table; then
+        # shellcheck disable=SC2016 # Backticks are literal in the sed pattern
         dir_name=$(echo "$line" | sed -n 's/.*`\([^`]*\/\)`.*/\1/p')
         if [[ -n "$dir_name" ]]; then
             echo "$dir_name" >> "$documented_list"

@@ -2,9 +2,12 @@
 set -euo pipefail
 # ホームディレクトリ走査防止フック
 # 許可パス以外の ${HOME} 配下アクセスを deny する
-readonly INPUT=$(cat)
-readonly TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name')
-readonly PROJECT_DIR=$(echo "$INPUT" | jq -r '.cwd')
+INPUT=$(cat)
+readonly INPUT
+TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name')
+readonly TOOL_NAME
+PROJECT_DIR=$(echo "$INPUT" | jq -r '.cwd')
+readonly PROJECT_DIR
 
 # 許可するパス一覧(追加削除はここで管理)
 readonly ALLOWED_PATHS=(

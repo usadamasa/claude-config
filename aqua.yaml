@@ -8,3 +8,5 @@ registries:
 
 packages:
   - name: fe3dback/go-arch-lint@v1.14.0
+  - name: koalaman/shellcheck@v0.10.0
+  - name: pre-commit/pre-commit@v4.2.0

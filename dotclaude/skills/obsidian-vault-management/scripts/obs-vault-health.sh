@@ -23,7 +23,7 @@ orphan_count=$(obs_val orphans "${VAULT_ARGS[@]}" total || echo "?")
 deadend_count=$(obs_val deadends "${VAULT_ARGS[@]}" total || echo "?")
 unresolved_count=$(obs_val unresolved "${VAULT_ARGS[@]}" total || echo "?")
 task_todo=$(obs_val tasks todo "${VAULT_ARGS[@]}" total || echo "?")
-task_done=$(obs_val tasks done "${VAULT_ARGS[@]}" total || echo "?")
+task_done=$(obs_val tasks "done" "${VAULT_ARGS[@]}" total || echo "?")
 tag_count=$(obs_val tags "${VAULT_ARGS[@]}" total || echo "?")
 
 # orphan/deadend 率を計算

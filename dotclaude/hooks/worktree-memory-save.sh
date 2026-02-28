@@ -8,8 +8,10 @@
 
 set -euo pipefail
 
+# shellcheck disable=SC2034 # Used by sourced hook-logger.sh
 HOOK_NAME="worktree-memory-save"
 SCRIPT_DIR="${SCRIPT_DIR:-$(cd "$(dirname "$0")" && pwd)}"
+# shellcheck disable=SC1091 # Dynamically resolved path
 source "$SCRIPT_DIR/lib/hook-logger.sh"
 
 WORKTREE_PATH="${1:-${GIT_WT_WORKTREE_PATH:-}}"

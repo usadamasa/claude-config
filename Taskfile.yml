@@ -7,12 +7,39 @@ includes:
 
 tasks:
   test:
-    desc: テストを実行 (bats + Go)
+    desc: テストを実行 (bats + Go + shellcheck)
     cmds:
       - echo "🧪 テストを実行中..."
+      - task: shellcheck
       - bats tests/
       - task: go:test
       - echo "✅ テスト完了"
+
+  shellcheck:
+    desc: 全シェルスクリプトの shellcheck を実行
+    cmds:
+      - find . \( -name "*.sh" -o -name "*.bats" -o -name ".envrc" \) -not -path "./.git/*" | xargs shellcheck
+
+  install-hooks:
+    desc: pre-commit の git hooks をインストール
+    cmds:
+      - |
+        if ! command -v pre-commit &>/dev/null; then
+          echo "⏭️ pre-commit が見つかりません。スキップします。"
+          exit 0
+        fi
+        GIT_DIR=$(git rev-parse --git-dir 2>/dev/null)
+        GIT_COMMON=$(git rev-parse --git-common-dir 2>/dev/null)
+        if [ "$GIT_DIR" != "$GIT_COMMON" ]; then
+          # worktree 環境: core.hooksPath で共通ディレクトリを指定
+          HOOKS_DIR="$GIT_COMMON/hooks"
+          git config core.hooksPath "$HOOKS_DIR"
+          pre-commit install --hook-type pre-commit --install-hooks
+          echo "  ✓ pre-commit hooks installed (worktree: $HOOKS_DIR)"
+        else
+          pre-commit install --install-hooks
+          echo "  ✓ pre-commit hooks installed"
+        fi
 
   setup:
     desc: Claude設定のファイルレベル symlink をセットアップ
@@ -72,6 +99,7 @@ tasks:
           ln -sfn "$skill_dir" "$target"
           echo "  ✓ skills/$skill_name/"
         done
+      - task: install-hooks
       - echo "✅ Claude設定をセットアップしました"
 
   status:

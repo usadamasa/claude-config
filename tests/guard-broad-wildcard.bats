@@ -31,6 +31,7 @@ setup() {
 teardown() {
   export HOME="$ORIG_HOME"
   [ -n "$TEST_TMPDIR" ] && rm -rf "$TEST_TMPDIR"
+  # SCRIPT_DIR をクリアしないと後続のテストがモックライブラリを参照し続ける
   unset SCRIPT_DIR
 }
 
@@ -73,7 +74,7 @@ create_settings_local() {
 # Bash(*) 除去 (正当エントリは保持)
 # =============================================================================
 
-@test "Bash(*) が除去される (正当な Bash(git:*) は保持)" {
+@test "Bash(*) が除去される (Bash(git status:*) と Bash(ls:*) は保持)" {
   create_settings_local "$MOCK_PROJECT" '{
     "permissions": {
       "allow": ["Bash(*)", "Bash(git status:*)", "Bash(ls:*)"]
@@ -316,4 +317,109 @@ create_settings_local() {
   [ "$count" -eq 1 ]
   count=$(jq '[.permissions.allow[] | select(. == "Read(~/src/**)")] | length' "$MOCK_HOME/.claude/settings.local.json")
   [ "$count" -eq 1 ]
+}
+
+# =============================================================================
+# エラーパス: 不正な JSON
+# =============================================================================
+
+@test "settings.local.json が不正な JSON: エラー終了" {
+  echo '{"invalid json' > "$MOCK_PROJECT/.claude/settings.local.json"
+
+  run bash "$SCRIPT_PATH" <<< "{\"cwd\":\"$MOCK_PROJECT\"}"
+
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"ERROR"* ]]
+  [[ "$output" == *"not valid JSON"* ]]
+}
+
+@test "フック入力が不正な JSON: エラー終了" {
+  run bash "$SCRIPT_PATH" <<< "not json at all"
+
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"ERROR"* ]]
+}
+
+# =============================================================================
+# エラーパス: 非文字列エントリ
+# =============================================================================
+
+@test "permissions.allow に非文字列エントリが混在しても Bash(*) が除去される" {
+  create_settings_local "$MOCK_PROJECT" '{
+    "permissions": {
+      "allow": [1, null, "Bash(*)", "Bash(git:*)"]
+    }
+  }'
+
+  run bash "$SCRIPT_PATH" <<< "{\"cwd\":\"$MOCK_PROJECT\"}"
+
+  [ "$status" -eq 0 ]
+  # Bash(*) が除去されていること
+  local count
+  count=$(jq '[.permissions.allow[] | select(type == "string" and . == "Bash(*)")] | length' \
+    "$MOCK_PROJECT/.claude/settings.local.json")
+  [ "$count" -eq 0 ]
+  # 正当な文字列エントリは保持
+  count=$(jq '[.permissions.allow[] | select(type == "string" and . == "Bash(git:*)")] | length' \
+    "$MOCK_PROJECT/.claude/settings.local.json")
+  [ "$count" -eq 1 ]
+  # 非文字列エントリも保持
+  count=$(jq '[.permissions.allow[] | select(type != "string")] | length' \
+    "$MOCK_PROJECT/.claude/settings.local.json")
+  [ "$count" -eq 2 ]
+}
+
+# =============================================================================
+# cwd 未指定: グローバルのみ処理
+# =============================================================================
+
+@test "cwd が指定されていない場合: グローバル settings.local.json のみ除去される" {
+  create_settings_local "$MOCK_HOME" '{
+    "permissions": {
+      "allow": ["Bash(*)"]
+    }
+  }'
+
+  run bash "$SCRIPT_PATH" <<< '{}'
+
+  [ "$status" -eq 0 ]
+  local count
+  count=$(jq '[.permissions.allow[] | select(. == "Bash(*)")] | length' \
+    "$MOCK_HOME/.claude/settings.local.json")
+  [ "$count" -eq 0 ]
+}
+
+# =============================================================================
+# 除去後の他キー保持
+# =============================================================================
+
+@test "除去後に他の設定キー (model 等) が保持される" {
+  create_settings_local "$MOCK_PROJECT" '{
+    "permissions": {
+      "allow": ["Bash(*)", "Bash(git:*)"]
+    },
+    "model": "sonnet",
+    "theme": "dark"
+  }'
+
+  run bash "$SCRIPT_PATH" <<< "{\"cwd\":\"$MOCK_PROJECT\"}"
+
+  [ "$status" -eq 0 ]
+  local model theme
+  model=$(jq -r '.model' "$MOCK_PROJECT/.claude/settings.local.json")
+  [ "$model" = "sonnet" ]
+  theme=$(jq -r '.theme' "$MOCK_PROJECT/.claude/settings.local.json")
+  [ "$theme" = "dark" ]
+}
+
+# =============================================================================
+# stdout が空であることの検証
+# =============================================================================
+
+@test "正常終了時: stdout は空である" {
+  create_settings_local "$MOCK_PROJECT" '{"permissions":{"allow":["Bash(git:*)"]}}'
+
+  stdout=$(bash "$SCRIPT_PATH" <<< "{\"cwd\":\"$MOCK_PROJECT\"}" 2>/dev/null)
+
+  [ -z "$stdout" ]
 }

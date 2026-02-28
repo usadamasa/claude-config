@@ -391,7 +391,7 @@ func main() {
 		encoder := json.NewEncoder(f)
 		encoder.SetIndent("", "  ")
 		if err := encoder.Encode(report); err != nil {
-			f.Close()
+			_ = f.Close()
 			fmt.Fprintf(os.Stderr, "JSON の書き出しに失敗: %v\n", err)
 			os.Exit(1)
 		}

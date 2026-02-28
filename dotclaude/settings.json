@@ -208,7 +208,7 @@
     "feature-dev@claude-plugins-official": false,
     "code-simplifier@claude-plugins-official": false,
     "typescript-lsp@claude-plugins-official": false,
-    "ralph-loop@claude-plugins-official": false,
+    "ralph-loop@claude-plugins-official": true,
     "superpowers@claude-plugins-official": true,
     "playwright@claude-plugins-official": false,
     "security-guidance@claude-plugins-official": true,

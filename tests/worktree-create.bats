@@ -13,15 +13,18 @@ setup() {
   REAL_HOOKS_DIR="$(cd "$(dirname "$BATS_TEST_FILENAME")/.." && pwd)/dotclaude/hooks"
   mkdir -p "$MOCK_BIN/lib"
   cp "$REAL_HOOKS_DIR/lib/hook-logger.sh" "$MOCK_BIN/lib/hook-logger.sh"
+  cp "$REAL_HOOKS_DIR/lib/sync-main-repo.sh" "$MOCK_BIN/lib/sync-main-repo.sh"
 
-  # git wt のモック (デフォルト: 成功)
+  # git wt のモック (デフォルト: 成功、sync 関連コマンドも処理)
   MOCK_WORKTREE_PATH="$TEST_TMPDIR/worktrees/test-repo/my-branch"
   mkdir -p "$MOCK_WORKTREE_PATH"
   # worktree 判定用に .git ファイルを作成
   echo "gitdir: /tmp/fake-gitdir" > "$MOCK_WORKTREE_PATH/.git"
 
+  # デフォルトモック: CWD に .git ファイルも .git ディレクトリもないので sync はスキップされる
   cat > "$MOCK_BIN/git" << 'MOCKEOF'
 #!/bin/bash
+echo "$@" >> "$TEST_TMPDIR/git-calls.log"
 if [ "$1" = "wt" ]; then
   shift
   # --nocd フラグの確認
@@ -33,8 +36,27 @@ if [ "$1" = "wt" ]; then
   echo "$MOCK_WORKTREE_PATH"
   exit 0
 fi
-# 他の git コマンドは本物を使う
-/usr/bin/git "$@"
+# -C 付きの sync 系コマンド (テスト個別で上書きされる)
+if [ "$1" = "-C" ]; then
+  shift 2
+  case "$1" in
+    config)
+      if [ "$2" = "--get" ]; then
+        echo "+refs/heads/*:refs/remotes/origin/*"
+        exit 0
+      fi
+      ;;
+    fetch) exit 0 ;;
+    show-ref)
+      if [[ "$*" == *"refs/heads/main"* ]]; then exit 0; fi
+      exit 1
+      ;;
+    symbolic-ref) echo "main"; exit 0 ;;
+    merge) exit 0 ;;
+  esac
+  exit 0
+fi
+exit 0
 MOCKEOF
   chmod +x "$MOCK_BIN/git"
 
@@ -203,4 +225,59 @@ MOCKEOF
   [[ "$output" == *"[DRY-RUN]"* ]]
   [[ "$output" == *"CMD"* ]]
   [[ "$output" == *"git wt"* ]]
+}
+
+# =============================================================================
+# sync 連携
+# =============================================================================
+
+@test "sync が git wt の前に実行される" {
+  # CWD に .git ディレクトリを作成 (resolve_main_repo のフォールバックパスで MAIN_REPO=CWD)
+  mkdir -p "$TEST_TMPDIR/.git"
+
+  run bash "$SCRIPT_PATH" <<< "{\"name\":\"my-branch\",\"cwd\":\"$TEST_TMPDIR\"}"
+
+  [ "$status" -eq 0 ]
+  # fetch が wt より先に呼ばれたことを確認
+  local fetch_line wt_line
+  fetch_line=$(grep -n "fetch origin" "$TEST_TMPDIR/git-calls.log" | head -1 | cut -d: -f1)
+  wt_line=$(grep -n "wt --nocd" "$TEST_TMPDIR/git-calls.log" | head -1 | cut -d: -f1)
+  [ -n "$fetch_line" ]
+  [ -n "$wt_line" ]
+  [ "$fetch_line" -lt "$wt_line" ]
+}
+
+@test "sync 失敗時に worktree 作成も失敗する" {
+  # CWD に .git ディレクトリを作成 + fetch が失敗するモック
+  mkdir -p "$TEST_TMPDIR/.git"
+  cat > "$MOCK_BIN/git" << 'MOCKEOF'
+#!/bin/bash
+echo "$@" >> "$TEST_TMPDIR/git-calls.log"
+if [ "$1" = "-C" ]; then
+  shift 2
+  case "$1" in
+    config)
+      if [ "$2" = "--get" ]; then
+        echo "+refs/heads/*:refs/remotes/origin/*"
+        exit 0
+      fi
+      ;;
+    fetch) exit 1 ;;
+  esac
+  exit 0
+fi
+if [ "$1" = "wt" ]; then
+  echo "WE_SHOULD_NOT_GET_HERE" >> "$TEST_TMPDIR/wt-calls.log"
+  echo "$MOCK_WORKTREE_PATH"
+  exit 0
+fi
+exit 0
+MOCKEOF
+  chmod +x "$MOCK_BIN/git"
+
+  run bash "$SCRIPT_PATH" <<< "{\"name\":\"my-branch\",\"cwd\":\"$TEST_TMPDIR\"}"
+
+  [ "$status" -ne 0 ]
+  # git wt は呼ばれないこと
+  [ ! -f "$TEST_TMPDIR/wt-calls.log" ]
 }

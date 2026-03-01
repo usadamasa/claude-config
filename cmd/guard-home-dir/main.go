@@ -67,56 +67,12 @@ func main() {
 		}
 	}
 
-	var paths []string
-
-	switch input.ToolName {
-	case "Read", "Edit", "Write", "NotebookEdit":
-		p := extractFilePath(input.ToolName, input.ToolInput)
-		if p != "" {
-			paths = append(paths, p)
-		}
-	case "Glob", "Grep":
-		p := extractFilePath(input.ToolName, input.ToolInput)
-		if p == "" {
-			// パスが空なら cwd → 通過
-			os.Exit(0)
-		}
-		paths = append(paths, p)
-	case "Bash":
-		command, ok := input.ToolInput["command"].(string)
-		if !ok || command == "" {
-			os.Exit(0)
-		}
-		targets := extractScanTargets(command, home)
-		if targets == nil {
-			// スキャンコマンドでない → 通過
-			os.Exit(0)
-		}
-		paths = targets
-	default:
-		// 未知のツール → 通過
-		os.Exit(0)
-	}
-
-	// パスが空なら通過
+	paths := extractToolPaths(input, home)
 	if len(paths) == 0 {
 		os.Exit(0)
 	}
 
-	// 各パスを正規化してチェック
-	var resolvedPaths []string
-	for _, p := range paths {
-		// 相対パスを絶対パスに変換
-		if !filepath.IsAbs(p) {
-			p = filepath.Join(cwd, p)
-		}
-		// シンボリックリンク解決
-		resolved, err := resolveRealpath(p)
-		if err != nil {
-			resolved = filepath.Clean(p)
-		}
-		resolvedPaths = append(resolvedPaths, resolved)
-	}
+	resolvedPaths := resolvePaths(paths, cwd)
 
 	// 許可パスチェック
 	deniedPath := checkPaths(resolvedPaths, home, cwd)
@@ -125,6 +81,54 @@ func main() {
 	}
 
 	// deny JSON 出力
+	writeDeny(deniedPath)
+}
+
+// extractToolPaths はツール名に応じてチェック対象パスを抽出する｡
+// パスがない場合は nil を返す (→ 通過)｡
+func extractToolPaths(input hookInput, home string) []string {
+	switch input.ToolName {
+	case "Read", "Edit", "Write", "NotebookEdit":
+		p := extractFilePath(input.ToolName, input.ToolInput)
+		if p != "" {
+			return []string{p}
+		}
+		return nil
+	case "Glob", "Grep":
+		p := extractFilePath(input.ToolName, input.ToolInput)
+		if p == "" {
+			return nil
+		}
+		return []string{p}
+	case "Bash":
+		command, ok := input.ToolInput["command"].(string)
+		if !ok || command == "" {
+			return nil
+		}
+		return extractScanTargets(command, home)
+	default:
+		return nil
+	}
+}
+
+// resolvePaths は各パスを絶対パスに変換し、シンボリックリンクを解決する｡
+func resolvePaths(paths []string, cwd string) []string {
+	var resolved []string
+	for _, p := range paths {
+		if !filepath.IsAbs(p) {
+			p = filepath.Join(cwd, p)
+		}
+		r, err := resolveRealpath(p)
+		if err != nil {
+			r = filepath.Clean(p)
+		}
+		resolved = append(resolved, r)
+	}
+	return resolved
+}
+
+// writeDeny は deny JSON を stdout に出力する｡
+func writeDeny(deniedPath string) {
 	resp := denyResponse{
 		HookSpecificOutput: hookOutput{
 			HookEventName:            "PreToolUse",
@@ -134,7 +138,7 @@ func main() {
 	}
 	out, _ := json.Marshal(resp)
 	out = append(out, '\n')
-	os.Stdout.Write(out)
+	_, _ = os.Stdout.Write(out)
 }
 
 // extractFilePath はツール名に応じたファイルパスを tool_input から抽出する｡

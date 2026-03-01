@@ -4,10 +4,10 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/usadamasa/claude-config/internal/pathutil"
 )
 
-// resolvedTempDir は t.TempDir() のパスを symlink 解決済みで返す｡
-// macOS では /var → /private/var の symlink があるため必要｡
 func resolvedTempDir(t *testing.T) string {
 	t.Helper()
 	tmp := t.TempDir()
@@ -25,7 +25,7 @@ func TestResolveRealpath(t *testing.T) {
 		if err := os.WriteFile(f, []byte("test"), 0644); err != nil {
 			t.Fatal(err)
 		}
-		got, err := resolveRealpath(f)
+		got, err := pathutil.ResolveRealpath(f)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -35,7 +35,7 @@ func TestResolveRealpath(t *testing.T) {
 	})
 
 	t.Run("存在しないパスを正規化する", func(t *testing.T) {
-		got, err := resolveRealpath("/nonexistent/path/to/file.txt")
+		got, err := pathutil.ResolveRealpath("/nonexistent/path/to/file.txt")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -46,7 +46,7 @@ func TestResolveRealpath(t *testing.T) {
 	})
 
 	t.Run(".. を含むパスを正規化する", func(t *testing.T) {
-		got, err := resolveRealpath("/foo/bar/../baz")
+		got, err := pathutil.ResolveRealpath("/foo/bar/../baz")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -57,7 +57,7 @@ func TestResolveRealpath(t *testing.T) {
 	})
 
 	t.Run(". を含むパスを正規化する", func(t *testing.T) {
-		got, err := resolveRealpath("/foo/./bar")
+		got, err := pathutil.ResolveRealpath("/foo/./bar")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -77,7 +77,7 @@ func TestResolveRealpath(t *testing.T) {
 		if err := os.Symlink(real, link); err != nil {
 			t.Fatal(err)
 		}
-		got, err := resolveRealpath(filepath.Join(link, "file.txt"))
+		got, err := pathutil.ResolveRealpath(filepath.Join(link, "file.txt"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -97,7 +97,7 @@ func TestResolveRealpath(t *testing.T) {
 		if err := os.Symlink(real, link); err != nil {
 			t.Fatal(err)
 		}
-		got, err := resolveRealpath(filepath.Join(link, "subdir", "file.txt"))
+		got, err := pathutil.ResolveRealpath(filepath.Join(link, "subdir", "file.txt"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -108,7 +108,7 @@ func TestResolveRealpath(t *testing.T) {
 	})
 
 	t.Run("相対パスを絶対パスに変換する", func(t *testing.T) {
-		got, err := resolveRealpath("relative/path")
+		got, err := pathutil.ResolveRealpath("relative/path")
 		if err != nil {
 			t.Fatal(err)
 		}

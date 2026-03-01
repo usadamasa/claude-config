@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func TestLoadAllowlist(t *testing.T) {
+func TestExtractAllowlist(t *testing.T) {
 	t.Run("parses WebFetch domain entries", func(t *testing.T) {
 		settingsJSON := `{
   "permissions": {
@@ -17,10 +17,11 @@ func TestLoadAllowlist(t *testing.T) {
 }`
 		path := writeTestFile(t, t.TempDir(), "settings.json", settingsJSON)
 
-		entries, err := LoadAllowlist(path)
+		s, err := LoadSettings(path)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
+		entries := ExtractAllowlist(s)
 		if len(entries) != 2 {
 			t.Fatalf("expected 2 entries, got %d", len(entries))
 		}
@@ -42,10 +43,11 @@ func TestLoadAllowlist(t *testing.T) {
 }`
 		path := writeTestFile(t, t.TempDir(), "settings.json", settingsJSON)
 
-		entries, err := LoadAllowlist(path)
+		s, err := LoadSettings(path)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
+		entries := ExtractAllowlist(s)
 		if len(entries) != 1 {
 			t.Fatalf("expected 1 entry, got %d", len(entries))
 		}
@@ -64,10 +66,11 @@ func TestLoadAllowlist(t *testing.T) {
 }`
 		path := writeTestFile(t, t.TempDir(), "settings.json", settingsJSON)
 
-		entries, err := LoadAllowlist(path)
+		s, err := LoadSettings(path)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
+		entries := ExtractAllowlist(s)
 		if len(entries) != 1 {
 			t.Fatalf("expected 1 entry, got %d", len(entries))
 		}
@@ -89,10 +92,11 @@ func TestLoadAllowlist(t *testing.T) {
 }`
 		path := writeTestFile(t, t.TempDir(), "settings.json", settingsJSON)
 
-		entries, err := LoadAllowlist(path)
+		s, err := LoadSettings(path)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
+		entries := ExtractAllowlist(s)
 		if len(entries) != 3 {
 			t.Fatalf("expected 3 entries, got %d", len(entries))
 		}
@@ -106,10 +110,11 @@ func TestLoadAllowlist(t *testing.T) {
 }`
 		path := writeTestFile(t, t.TempDir(), "settings.json", settingsJSON)
 
-		entries, err := LoadAllowlist(path)
+		s, err := LoadSettings(path)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
+		entries := ExtractAllowlist(s)
 		if len(entries) != 0 {
 			t.Fatalf("expected 0 entries, got %d", len(entries))
 		}
@@ -121,10 +126,11 @@ func TestLoadAllowlist(t *testing.T) {
 }`
 		path := writeTestFile(t, t.TempDir(), "settings.json", settingsJSON)
 
-		entries, err := LoadAllowlist(path)
+		s, err := LoadSettings(path)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
+		entries := ExtractAllowlist(s)
 		if len(entries) != 0 {
 			t.Fatalf("expected 0 entries, got %d", len(entries))
 		}
@@ -133,21 +139,21 @@ func TestLoadAllowlist(t *testing.T) {
 	t.Run("returns error for invalid JSON", func(t *testing.T) {
 		path := writeTestFile(t, t.TempDir(), "settings.json", "not json")
 
-		_, err := LoadAllowlist(path)
+		_, err := LoadSettings(path)
 		if err == nil {
 			t.Fatal("expected error for invalid JSON, got nil")
 		}
 	})
 
 	t.Run("returns error for nonexistent file", func(t *testing.T) {
-		_, err := LoadAllowlist("/nonexistent/settings.json")
+		_, err := LoadSettings("/nonexistent/settings.json")
 		if err == nil {
 			t.Fatal("expected error for nonexistent file, got nil")
 		}
 	})
 }
 
-func TestLoadSandboxDomains(t *testing.T) {
+func TestExtractSandboxDomains(t *testing.T) {
 	t.Run("loads sandbox domains from settings", func(t *testing.T) {
 		settingsJSON := `{
   "sandbox": {
@@ -158,10 +164,11 @@ func TestLoadSandboxDomains(t *testing.T) {
 }`
 		path := writeTestFile(t, t.TempDir(), "settings.json", settingsJSON)
 
-		domains, err := LoadSandboxDomains(path)
+		s, err := LoadSettings(path)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
+		domains := ExtractSandboxDomains(s)
 		if len(domains) != 3 {
 			t.Fatalf("expected 3 domains, got %d", len(domains))
 		}
@@ -184,10 +191,11 @@ func TestLoadSandboxDomains(t *testing.T) {
 }`
 		path := writeTestFile(t, t.TempDir(), "settings.json", settingsJSON)
 
-		domains, err := LoadSandboxDomains(path)
+		s, err := LoadSettings(path)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
+		domains := ExtractSandboxDomains(s)
 		if len(domains) != 0 {
 			t.Fatalf("expected 0 domains, got %d", len(domains))
 		}
@@ -203,16 +211,17 @@ func TestLoadSandboxDomains(t *testing.T) {
 }`
 		path := writeTestFile(t, t.TempDir(), "settings.json", settingsJSON)
 
-		domains, err := LoadSandboxDomains(path)
+		s, err := LoadSettings(path)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
+		domains := ExtractSandboxDomains(s)
 		if len(domains) != 0 {
 			t.Fatalf("expected 0 domains, got %d", len(domains))
 		}
 	})
 
-	t.Run("loads both permissions and sandbox domains", func(t *testing.T) {
+	t.Run("loads both permissions and sandbox domains from single load", func(t *testing.T) {
 		settingsJSON := `{
   "permissions": {
     "allow": [
@@ -228,18 +237,17 @@ func TestLoadSandboxDomains(t *testing.T) {
 }`
 		path := writeTestFile(t, t.TempDir(), "settings.json", settingsJSON)
 
-		allowlist, err := LoadAllowlist(path)
+		s, err := LoadSettings(path)
 		if err != nil {
-			t.Fatalf("unexpected error loading allowlist: %v", err)
+			t.Fatalf("unexpected error loading settings: %v", err)
 		}
+
+		allowlist := ExtractAllowlist(s)
 		if len(allowlist) != 1 {
 			t.Errorf("expected 1 allowlist entry, got %d", len(allowlist))
 		}
 
-		domains, err := LoadSandboxDomains(path)
-		if err != nil {
-			t.Fatalf("unexpected error loading sandbox: %v", err)
-		}
+		domains := ExtractSandboxDomains(s)
 		if len(domains) != 2 {
 			t.Errorf("expected 2 sandbox domains, got %d", len(domains))
 		}

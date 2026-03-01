@@ -2,24 +2,22 @@ package main
 
 import (
 	"strings"
+
+	"github.com/usadamasa/claude-config/internal/category"
 )
 
 // Category はパーミッションパターンの安全性分類を表す｡
-type Category string
-
-const (
-	CategorySafe   Category = "safe"
-	CategoryAsk    Category = "ask"
-	CategoryDeny   Category = "deny"
-	CategoryReview Category = "review"
-)
+type Category = category.Category
 
 // CategoryResult はパターンの分類結果を保持する｡
-type CategoryResult struct {
-	Category       Category `json:"category"`
-	Reason         string   `json:"reason"`
-	DenyBypassRisk bool     `json:"deny_bypass_risk,omitempty"`
-}
+type CategoryResult = category.Result
+
+const (
+	CategorySafe   = category.CategorySafe
+	CategoryReview = category.CategoryReview
+	CategoryAsk    Category = "ask"
+	CategoryDeny   Category = "deny"
+)
 
 // bashSafePatterns は安全な Bash コマンドのプレフィックスパターン｡
 var bashSafePatterns = []struct {
@@ -84,12 +82,10 @@ var bashDenyPatterns = []struct {
 }
 
 // bashDenyBypassPatterns は Read/Write deny をバイパスできる Bash コマンド｡
-// Claude Code はツールごとに独立してパーミッションを評価するため､
-// Bash 経由でファイル操作するとRead/Write の deny が効かない｡
 var bashDenyBypassPatterns = []struct {
 	match  func(pattern string) bool
 	reason string
-	bypass string // "read", "write", or "both"
+	bypass string
 }{
 	{func(p string) bool { return p == "cat" || strings.HasPrefix(p, "cat ") }, "ファイル読取 (Read deny バイパス)", "read"},
 	{func(p string) bool { return p == "head" || strings.HasPrefix(p, "head ") }, "ファイル先頭読取 (Read deny バイパス)", "read"},
@@ -167,25 +163,21 @@ func CategorizePermission(toolName, pattern string) CategoryResult {
 }
 
 func categorizeBash(pattern string) CategoryResult {
-	// deny を最初にチェック
 	for _, p := range bashDenyPatterns {
 		if p.match(pattern) {
 			return CategoryResult{Category: CategoryDeny, Reason: p.reason}
 		}
 	}
-	// 次に ask
 	for _, p := range bashAskPatterns {
 		if p.match(pattern) {
 			return CategoryResult{Category: CategoryAsk, Reason: p.reason}
 		}
 	}
-	// safe
 	for _, p := range bashSafePatterns {
 		if p.match(pattern) {
 			return CategoryResult{Category: CategorySafe, Reason: p.reason}
 		}
 	}
-	// deny バイパスリスクチェック
 	for _, p := range bashDenyBypassPatterns {
 		if p.match(pattern) {
 			return CategoryResult{
@@ -199,13 +191,11 @@ func categorizeBash(pattern string) CategoryResult {
 }
 
 func categorizeFile(pattern string) CategoryResult {
-	// deny を最初にチェック
 	for _, p := range fileDenyPatterns {
 		if p.match(pattern) {
 			return CategoryResult{Category: CategoryDeny, Reason: p.reason}
 		}
 	}
-	// safe
 	for _, p := range fileSafePatterns {
 		if p.match(pattern) {
 			return CategoryResult{Category: CategorySafe, Reason: p.reason}

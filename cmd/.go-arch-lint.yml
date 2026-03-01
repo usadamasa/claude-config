@@ -1,0 +1,47 @@
+version: 3
+
+workdir: .
+
+components:
+  cmd_realpath:
+    in: "realpath/**"
+  cmd_guard_home_dir:
+    in: "guard-home-dir/**"
+  cmd_analyze_tokens:
+    in: "analyze-tokens/**"
+  cmd_analyze_webfetch:
+    in: "analyze-webfetch/**"
+  cmd_analyze_permissions:
+    in: "analyze-permissions/**"
+  internal_pathutil:
+    in: "internal/pathutil/**"
+  internal_jsonlscan:
+    in: "internal/jsonlscan/**"
+  internal_settings:
+    in: "internal/settings/**"
+  internal_category:
+    in: "internal/category/**"
+
+deps:
+  cmd_realpath:
+    mayDependOn:
+      - internal_pathutil
+  cmd_guard_home_dir:
+    mayDependOn:
+      - internal_pathutil
+  cmd_analyze_tokens:
+    mayDependOn:
+      - internal_jsonlscan
+      - internal_pathutil
+  cmd_analyze_webfetch:
+    mayDependOn:
+      - internal_jsonlscan
+      - internal_pathutil
+      - internal_settings
+      - internal_category
+  cmd_analyze_permissions:
+    mayDependOn:
+      - internal_jsonlscan
+      - internal_pathutil
+      - internal_settings
+      - internal_category

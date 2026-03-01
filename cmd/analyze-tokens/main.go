@@ -5,8 +5,9 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"path/filepath"
 	"sort"
+
+	"github.com/usadamasa/claude-config/internal/pathutil"
 )
 
 // Report はtoken使用量分析レポートの全体構造｡
@@ -148,16 +149,15 @@ func main() {
 	projectsDir := flag.String("dir", "", "セッションディレクトリ (デフォルト: ~/.claude/projects)")
 	flag.Parse()
 
-	if *projectsDir == "" {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "ホームディレクトリ取得失敗: %v\n", err)
-			os.Exit(1)
-		}
-		*projectsDir = filepath.Join(home, ".claude", "projects")
+	home, err := os.UserHomeDir()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "ホームディレクトリ取得失敗: %v\n", err)
+		os.Exit(1)
 	}
 
-	results, err := ScanProjectsDir(*projectsDir, *days)
+	dir := pathutil.ResolveProjectsDir(*projectsDir, home)
+
+	results, err := ScanProjectsDir(dir, *days)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "スキャン失敗: %v\n", err)
 		os.Exit(1)

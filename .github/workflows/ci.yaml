@@ -15,25 +15,80 @@ jobs:
   go-test:
     name: Go test & lint
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cmd
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-go@v5
         with:
-          go-version-file: go.mod
+          go-version-file: cmd/go.mod
           cache: false
 
       - name: go vet
-        run: go vet ./cmd/...
+        run: go vet ./...
 
       - name: go test
-        run: go test ./cmd/...
+        run: go test -coverprofile=coverage.out ./...
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: cmd/coverage.out
 
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v7
         with:
           version: v2.9.0
-          args: --timeout 5m ./cmd/...
+          args: --timeout 5m ./...
+          working-directory: cmd
+
+  go-arch-lint:
+    name: Go arch lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: cmd/go.mod
+          cache: false
+
+      - uses: aquaproj/aqua-installer@v3
+        with:
+          aqua_version: v2.53.3
+
+      - name: go-arch-lint check
+        run: go-arch-lint check --project-path cmd/
+
+  security-scan:
+    name: Security scan
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cmd
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: cmd/go.mod
+          cache: false
+
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+
+      - uses: aquaproj/aqua-installer@v3
+        with:
+          aqua_version: v2.53.3
+
+      - name: govulncheck
+        run: govulncheck ./...
+
+      - name: gosec
+        run: gosec ./...
 
   bats-test:
     name: bats test
@@ -43,13 +98,14 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version-file: go.mod
+          go-version-file: cmd/go.mod
           cache: false
 
       - name: Build Go binaries for bats tests
+        working-directory: cmd
         run: |
-          mkdir -p dotclaude/bin
-          go build -o dotclaude/bin/guard-home-dir ./cmd/guard-home-dir
+          mkdir -p ../dotclaude/bin
+          go build -o ../dotclaude/bin/guard-home-dir ./guard-home-dir
 
       - name: Install bats-core
         run: |
@@ -74,7 +130,7 @@ jobs:
         run: find . \( -name "*.sh" -o -name "*.bats" -o -name ".envrc" \) -not -path "./.git/*" | xargs shellcheck
 
   ci-status-check:
-    needs: [go-test, bats-test, shellcheck]
+    needs: [go-test, go-arch-lint, security-scan, bats-test, shellcheck]
     if: failure()
     runs-on: ubuntu-latest
     timeout-minutes: 10

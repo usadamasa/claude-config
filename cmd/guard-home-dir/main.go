@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/usadamasa/claude-config/internal/pathutil"
 )
 
 // 許可するホームディレクトリ配下のサブディレクトリ
@@ -56,13 +58,13 @@ func main() {
 		os.Exit(1)
 	}
 	// macOS の /var → /private/var 等の symlink を解決
-	if resolved, err := resolveRealpath(home); err == nil {
+	if resolved, err := pathutil.ResolveRealpath(home); err == nil {
 		home = resolved
 	}
 
 	cwd := input.CWD
 	if cwd != "" {
-		if resolved, err := resolveRealpath(cwd); err == nil {
+		if resolved, err := pathutil.ResolveRealpath(cwd); err == nil {
 			cwd = resolved
 		}
 	}
@@ -118,7 +120,7 @@ func resolvePaths(paths []string, cwd string) []string {
 		if !filepath.IsAbs(p) {
 			p = filepath.Join(cwd, p)
 		}
-		r, err := resolveRealpath(p)
+		r, err := pathutil.ResolveRealpath(p)
 		if err != nil {
 			r = filepath.Clean(p)
 		}

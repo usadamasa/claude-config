@@ -139,7 +139,7 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "Read|Edit|Write|Glob|Grep|NotebookEdit",
+        "matcher": "Read|Edit|Write|Glob|Grep|NotebookEdit|Bash",
         "hooks": [
           {
             "type": "command",
@@ -153,10 +153,6 @@
           {
             "type": "command",
             "command": "$HOME/.claude/hooks/guard-git-config.sh"
-          },
-          {
-            "type": "command",
-            "command": "$HOME/.claude/bin/guard-home-dir"
           }
         ]
       }

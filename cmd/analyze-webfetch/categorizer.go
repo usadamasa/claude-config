@@ -4,22 +4,21 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+
+	"github.com/usadamasa/claude-config/internal/category"
 )
 
-// Category represents the safety classification of a domain.
-type Category string
-
-const (
-	CategorySafe   Category = "safe"
-	CategoryMedium Category = "medium"
-	CategoryReview Category = "review"
-)
+// Category はドメインの安全性分類を表す｡
+type Category = category.Category
 
 // CategoryResult holds a domain's classification and the reason for it.
-type CategoryResult struct {
-	Category Category `json:"category"`
-	Reason   string   `json:"reason"`
-}
+type CategoryResult = category.Result
+
+const (
+	CategorySafe   = category.CategorySafe
+	CategoryReview = category.CategoryReview
+	CategoryMedium Category = "medium"
+)
 
 // safePatterns defines domain patterns classified as safe.
 var safePatterns = []struct {

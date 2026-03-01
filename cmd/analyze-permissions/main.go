@@ -5,10 +5,12 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/usadamasa/claude-config/internal/jsonlscan"
+	"github.com/usadamasa/claude-config/internal/pathutil"
 )
 
 // Report はレポートの最上位構造｡
@@ -31,12 +33,12 @@ type ReportMetadata struct {
 
 // Recommendations はカテゴリ別の推奨事項を含む｡
 type Recommendations struct {
-	Add                    []PatternRecommendation `json:"add"`
-	Review                 []PatternRecommendation `json:"review"`
-	Unused                 []UnusedEntry           `json:"unused"`
-	BareEntryWarnings      []string                `json:"bare_entry_warnings,omitempty"`
-	DenyBypassWarnings     []DenyBypassWarning     `json:"deny_bypass_warnings,omitempty"`
-	AllowEncompassesDeny   []AllowEncompassesDeny   `json:"allow_encompasses_deny,omitempty"`
+	Add                  []PatternRecommendation `json:"add"`
+	Review               []PatternRecommendation `json:"review"`
+	Unused               []UnusedEntry           `json:"unused"`
+	BareEntryWarnings    []string                `json:"bare_entry_warnings,omitempty"`
+	DenyBypassWarnings   []DenyBypassWarning     `json:"deny_bypass_warnings,omitempty"`
+	AllowEncompassesDeny []AllowEncompassesDeny   `json:"allow_encompasses_deny,omitempty"`
 }
 
 // AllowEncompassesDeny は allow エントリが deny エントリを包含するパターン｡
@@ -65,7 +67,7 @@ type PatternRecommendation struct {
 // UnusedEntry はパーミッションリストにあるが使用されていないエントリ｡
 type UnusedEntry struct {
 	Entry string `json:"entry"`
-	List  string `json:"list"` // "allow", "deny", "ask"
+	List  string `json:"list"`
 	Note  string `json:"note"`
 }
 
@@ -82,7 +84,6 @@ type PatternSummary struct {
 
 // GenerateReport はスキャン結果と現在のパーミッション設定からレポートを生成する｡
 func GenerateReport(scanResults []ScanResult, allow, deny, ask []string, days, filesScanned int) Report {
-	// パターンごとのカウントを集計
 	type patternKey struct {
 		toolName string
 		pattern  string
@@ -92,7 +93,6 @@ func GenerateReport(scanResults []ScanResult, allow, deny, ask []string, days, f
 		counts[patternKey{r.ToolName, r.Pattern}]++
 	}
 
-	// ベアエントリ警告を検出
 	var bareWarnings []string
 	for _, lists := range [][]string{allow, deny, ask} {
 		for _, entry := range lists {
@@ -103,7 +103,6 @@ func GenerateReport(scanResults []ScanResult, allow, deny, ask []string, days, f
 		}
 	}
 
-	// 全パターンを分類
 	var allPatterns []PatternSummary
 	var addRecs []PatternRecommendation
 	var reviewRecs []PatternRecommendation
@@ -124,7 +123,6 @@ func GenerateReport(scanResults []ScanResult, allow, deny, ask []string, days, f
 			InAsklist:   inAsk,
 		})
 
-		// 既存のパーミッションに含まれていないパターンを推奨
 		if !inAllow && !inDeny && !inAsk {
 			rec := PatternRecommendation{
 				ToolName: key.toolName,
@@ -139,14 +137,12 @@ func GenerateReport(scanResults []ScanResult, allow, deny, ask []string, days, f
 			case CategoryReview, CategoryAsk:
 				reviewRecs = append(reviewRecs, rec)
 			case CategoryDeny:
-				// deny カテゴリは deny リストに追加推奨
 				rec.Reason = cat.Reason + " (deny リストへの追加を推奨)"
 				reviewRecs = append(reviewRecs, rec)
 			}
 		}
 	}
 
-	// 未使用のパーミッションエントリを検出
 	var unusedRecs []UnusedEntry
 	checkUnused := func(entries []string, listName string) {
 		for _, entry := range entries {
@@ -154,7 +150,6 @@ func GenerateReport(scanResults []ScanResult, allow, deny, ask []string, days, f
 			if !ok {
 				continue
 			}
-			// ベアエントリは未使用チェック対象外
 			if pattern == "" {
 				continue
 			}
@@ -179,13 +174,9 @@ func GenerateReport(scanResults []ScanResult, allow, deny, ask []string, days, f
 	checkUnused(deny, "deny")
 	checkUnused(ask, "ask")
 
-	// deny バイパスリスクのクロスチェック
 	denyBypassWarnings := detectDenyBypassWarnings(allow, deny)
-
-	// allow が deny を包含するパターンの検出
 	allowEncompassesDeny := detectAllowEncompassesDeny(allow, deny)
 
-	// ソート
 	sort.Slice(allPatterns, func(i, j int) bool { return allPatterns[i].Count > allPatterns[j].Count })
 	sort.Slice(addRecs, func(i, j int) bool { return addRecs[i].Count > addRecs[j].Count })
 	sort.Slice(reviewRecs, func(i, j int) bool { return reviewRecs[i].Count > reviewRecs[j].Count })
@@ -222,7 +213,6 @@ func getDenyBypassType(pattern string) string {
 	return ""
 }
 
-// detectDenyBypassWarnings は allow の Bash コマンドが deny の Read/Write をバイパスできるか検出する｡
 func detectDenyBypassWarnings(allow, deny []string) []DenyBypassWarning {
 	var warnings []DenyBypassWarning
 	for _, allowEntry := range allow {
@@ -234,7 +224,6 @@ func detectDenyBypassWarnings(allow, deny []string) []DenyBypassWarning {
 		if !cat.DenyBypassRisk {
 			continue
 		}
-		// deny リストの Read/Write エントリとクロスチェック
 		bypassType := getDenyBypassType(pattern)
 		for _, denyEntry := range deny {
 			denyTool, _, denyOk := ParsePermissionEntry(denyEntry)
@@ -253,8 +242,6 @@ func detectDenyBypassWarnings(allow, deny []string) []DenyBypassWarning {
 	return warnings
 }
 
-// detectAllowEncompassesDeny は allow エントリが deny エントリを包含するパターンを検出する｡
-// 例: allow に Bash(gh:*) があり deny に Bash(gh auth:*) がある場合｡
 func detectAllowEncompassesDeny(allow, deny []string) []AllowEncompassesDeny {
 	var warnings []AllowEncompassesDeny
 	for _, allowEntry := range allow {
@@ -270,7 +257,6 @@ func detectAllowEncompassesDeny(allow, deny []string) []AllowEncompassesDeny {
 			if allowTool != denyTool {
 				continue
 			}
-			// allow パターンが deny パターンのプレフィックスか判定
 			if matchPattern(denyPattern, allowPattern) && allowPattern != denyPattern {
 				warnings = append(warnings, AllowEncompassesDeny{
 					AllowEntry: allowEntry,
@@ -283,7 +269,6 @@ func detectAllowEncompassesDeny(allow, deny []string) []AllowEncompassesDeny {
 	return warnings
 }
 
-// matchesBypassType は bypass タイプと deny ツール名の組み合わせがマッチするか判定する｡
 func matchesBypassType(bypassType, denyTool string) bool {
 	switch bypassType {
 	case "read":
@@ -297,39 +282,18 @@ func matchesBypassType(bypassType, denyTool string) bool {
 	}
 }
 
-// matchPattern はスキャンパターンがパーミッションパターンにマッチするか判定する｡
 func matchPattern(scanPattern, permPattern string) bool {
 	if scanPattern == permPattern {
 		return true
 	}
-	// プレフィックスマッチ (Bash の :* 形式に対応)
-	// "gh" は "gh pr" にマッチ、"src" は "src/main.go" にマッチ
 	if strings.HasPrefix(scanPattern, permPattern+" ") || strings.HasPrefix(scanPattern, permPattern+"/") {
 		return true
 	}
-	// ワイルドカードマッチ
 	if len(permPattern) > 3 && permPattern[len(permPattern)-3:] == "/**" {
 		prefix := permPattern[:len(permPattern)-3]
 		return strings.HasPrefix(scanPattern, prefix+"/") || scanPattern == prefix
 	}
 	return false
-}
-
-// countUniqueFiles はスキャン結果のユニークなファイル数をカウントする｡
-func countUniqueFiles(results []ScanResult) int {
-	seen := make(map[string]bool)
-	for _, r := range results {
-		seen[r.FilePath] = true
-	}
-	return len(seen)
-}
-
-// resolveProjectsDir は JSONL スキャン対象の projects ディレクトリを決定する｡
-func resolveProjectsDir(projectsDirFlag, home string) string {
-	if projectsDirFlag != "" {
-		return projectsDirFlag
-	}
-	return filepath.Join(home, ".claude", "projects")
 }
 
 func main() {
@@ -352,7 +316,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "カレントディレクトリの取得に失敗: %v\n", err)
 			os.Exit(1)
 		}
-		resolved, err := resolveSettingsPath(cwd, home)
+		resolved, err := pathutil.ResolveSettingsPath(cwd, home)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%v\n", err)
 			os.Exit(1)
@@ -360,28 +324,24 @@ func main() {
 		*settingsPath = resolved
 	}
 
-	projectsDir := resolveProjectsDir(*projectsDirFlag, home)
+	projectsDir := pathutil.ResolveProjectsDir(*projectsDirFlag, home)
 
-	// パーミッション読み込み
 	allow, deny, ask, err := LoadPermissions(*settingsPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "settings.json の読み込みに失敗 (%s): %v\n", *settingsPath, err)
 		os.Exit(1)
 	}
 
-	// JSONL ファイルスキャン
 	scanResults, err := ScanJSONLFiles(projectsDir, *days)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "JSONL ファイルの走査に失敗: %v\n", err)
 		os.Exit(1)
 	}
 
-	filesScanned := countUniqueFiles(scanResults)
+	filesScanned := jsonlscan.CountUniqueFiles(scanResults, func(r ScanResult) string { return r.FilePath })
 
-	// レポート生成
 	report := GenerateReport(scanResults, allow, deny, ask, *days, filesScanned)
 
-	// --output 指定時はフル JSON をファイルに書き出し
 	if *outputPath != "" {
 		f, err := os.Create(*outputPath)
 		if err != nil {
@@ -401,7 +361,6 @@ func main() {
 		}
 	}
 
-	// stdout への出力
 	switch *format {
 	case "json":
 		encoder := json.NewEncoder(os.Stdout)

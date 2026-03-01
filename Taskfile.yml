@@ -3,6 +3,7 @@ version: '3'
 includes:
   go:
     taskfile: ./cmd/Taskfile.yml
+    dir: ./cmd
     optional: true
 
 tasks:
@@ -148,32 +149,36 @@ tasks:
 
   build:hooks-bin:
     desc: フックが使う Go バイナリをビルド (ホスト用)
+    dir: cmd
     cmds:
-      - mkdir -p dotclaude/bin
-      - go build -o dotclaude/bin/realpath ./cmd/realpath
-      - go build -o dotclaude/bin/guard-home-dir ./cmd/guard-home-dir
+      - mkdir -p ../dotclaude/bin
+      - go build -o ../dotclaude/bin/realpath ./realpath
+      - go build -o ../dotclaude/bin/guard-home-dir ./guard-home-dir
     sources:
       - cmd/realpath/*.go
       - cmd/guard-home-dir/*.go
+      - cmd/internal/**/*.go
     generates:
       - dotclaude/bin/realpath
       - dotclaude/bin/guard-home-dir
 
   build:docker-bin:
     desc: Docker (Linux) 用 Go バイナリをクロスコンパイル
+    dir: cmd
     cmds:
-      - mkdir -p docker/bin
-      - GOOS=linux go build -o docker/bin/realpath ./cmd/realpath
-      - GOOS=linux go build -o docker/bin/guard-home-dir ./cmd/guard-home-dir
-      - GOOS=linux go build -o docker/bin/analyze-permissions ./cmd/analyze-permissions
-      - GOOS=linux go build -o docker/bin/analyze-webfetch ./cmd/analyze-webfetch
-      - GOOS=linux go build -o docker/bin/analyze-tokens ./cmd/analyze-tokens
+      - mkdir -p ../docker/bin
+      - GOOS=linux go build -o ../docker/bin/realpath ./realpath
+      - GOOS=linux go build -o ../docker/bin/guard-home-dir ./guard-home-dir
+      - GOOS=linux go build -o ../docker/bin/analyze-permissions ./analyze-permissions
+      - GOOS=linux go build -o ../docker/bin/analyze-webfetch ./analyze-webfetch
+      - GOOS=linux go build -o ../docker/bin/analyze-tokens ./analyze-tokens
     sources:
       - cmd/realpath/*.go
       - cmd/guard-home-dir/*.go
       - cmd/analyze-permissions/*.go
       - cmd/analyze-webfetch/*.go
       - cmd/analyze-tokens/*.go
+      - cmd/internal/**/*.go
     generates:
       - docker/bin/realpath
       - docker/bin/guard-home-dir

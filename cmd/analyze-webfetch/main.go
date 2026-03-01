@@ -7,7 +7,11 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
+
+	"github.com/usadamasa/claude-config/internal/jsonlscan"
+	"github.com/usadamasa/claude-config/internal/pathutil"
 )
 
 // Report is the top-level output structure.
@@ -62,7 +66,6 @@ type DomainSummary struct {
 
 // GenerateReport creates a Report from scan results and the current allowlist.
 func GenerateReport(scanResults []ScanResult, allowlist []AllowlistEntry, sandboxDomains []string, days int, filesScanned int) Report {
-	// Count domains and tool calls.
 	domainCounts := make(map[string]int)
 	webFetchCount := 0
 	fetchCount := 0
@@ -76,7 +79,6 @@ func GenerateReport(scanResults []ScanResult, allowlist []AllowlistEntry, sandbo
 		}
 	}
 
-	// Build allowlist lookup.
 	allowlistSet := make(map[string]bool)
 	var allowlistDomains []string
 	for _, e := range allowlist {
@@ -85,13 +87,11 @@ func GenerateReport(scanResults []ScanResult, allowlist []AllowlistEntry, sandbo
 	}
 	sort.Strings(allowlistDomains)
 
-	// Build sandbox lookup.
 	sandboxSet := make(map[string]bool)
 	for _, d := range sandboxDomains {
 		sandboxSet[d] = true
 	}
 
-	// Classify all domains.
 	var allDomains []DomainSummary
 	var addRecs []DomainRecommendation
 	var reviewRecs []DomainRecommendation
@@ -123,7 +123,6 @@ func GenerateReport(scanResults []ScanResult, allowlist []AllowlistEntry, sandbo
 		}
 	}
 
-	// Find unused allowlist entries.
 	var unusedRecs []UnusedDomain
 	for _, domain := range allowlistDomains {
 		if domainCounts[domain] == 0 {
@@ -136,7 +135,6 @@ func GenerateReport(scanResults []ScanResult, allowlist []AllowlistEntry, sandbo
 		}
 	}
 
-	// Find permissions domains not in sandbox.
 	var addToSandbox []DomainRecommendation
 	if sandboxDomains != nil {
 		for _, domain := range allowlistDomains {
@@ -151,7 +149,6 @@ func GenerateReport(scanResults []ScanResult, allowlist []AllowlistEntry, sandbo
 		}
 	}
 
-	// Sort outputs for deterministic results.
 	sort.Slice(allDomains, func(i, j int) bool { return allDomains[i].Count > allDomains[j].Count })
 	sort.Slice(addRecs, func(i, j int) bool { return addRecs[i].Count > addRecs[j].Count })
 	sort.Slice(reviewRecs, func(i, j int) bool { return reviewRecs[i].Count > reviewRecs[j].Count })
@@ -181,13 +178,10 @@ func GenerateReport(scanResults []ScanResult, allowlist []AllowlistEntry, sandbo
 	return report
 }
 
-// domainMatchesAllowlist checks if a domain is covered by any entry in the allowlist,
-// including wildcard entries like *.example.com.
 func domainMatchesAllowlist(domain string, allowlistSet map[string]bool) bool {
 	if allowlistSet[domain] {
 		return true
 	}
-	// Check wildcard entries.
 	parts := splitDomain(domain)
 	for i := 1; i < len(parts); i++ {
 		wildcard := "*." + joinDomain(parts[i:])
@@ -199,52 +193,11 @@ func domainMatchesAllowlist(domain string, allowlistSet map[string]bool) bool {
 }
 
 func splitDomain(domain string) []string {
-	var parts []string
-	for _, p := range filepath.SplitList(domain) {
-		parts = append(parts, split(p, '.')...)
-	}
-	return parts
+	return strings.Split(domain, ".")
 }
 
 func joinDomain(parts []string) string {
-	result := ""
-	for i, p := range parts {
-		if i > 0 {
-			result += "."
-		}
-		result += p
-	}
-	return result
-}
-
-func split(s string, sep byte) []string {
-	var parts []string
-	start := 0
-	for i := 0; i < len(s); i++ {
-		if s[i] == sep {
-			parts = append(parts, s[start:i])
-			start = i + 1
-		}
-	}
-	parts = append(parts, s[start:])
-	return parts
-}
-
-// countUniqueFiles counts the number of unique file paths in scan results.
-func countUniqueFiles(results []ScanResult) int {
-	seen := make(map[string]bool)
-	for _, r := range results {
-		seen[r.FilePath] = true
-	}
-	return len(seen)
-}
-
-// resolveProjectsDir は JSONL スキャン対象の projects ディレクトリを決定する｡
-func resolveProjectsDir(projectsDirFlag, home string) string {
-	if projectsDirFlag != "" {
-		return projectsDirFlag
-	}
-	return filepath.Join(home, ".claude", "projects")
+	return strings.Join(parts, ".")
 }
 
 func main() {
@@ -263,32 +216,25 @@ func main() {
 		*settingsPath = filepath.Join(home, ".claude", "settings.json")
 	}
 
-	projectsDir := resolveProjectsDir(*projectsDirFlag, home)
+	projectsDir := pathutil.ResolveProjectsDir(*projectsDirFlag, home)
 
-	// Load current allowlist.
-	allowlist, err := LoadAllowlist(*settingsPath)
+	s, err := LoadSettings(*settingsPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "settings.json の読み込みに失敗: %v\n", err)
 		os.Exit(1)
 	}
 
-	// Load sandbox domains.
-	sandboxDomains, err := LoadSandboxDomains(*settingsPath)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "sandbox ドメインの読み込みに失敗: %v\n", err)
-		os.Exit(1)
-	}
+	allowlist := ExtractAllowlist(s)
+	sandboxDomains := ExtractSandboxDomains(s)
 
-	// Scan JSONL files.
 	scanResults, err := ScanJSONLFiles(projectsDir, *days)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "JSONL ファイルの走査に失敗: %v\n", err)
 		os.Exit(1)
 	}
 
-	filesScanned := countUniqueFiles(scanResults)
+	filesScanned := jsonlscan.CountUniqueFiles(scanResults, func(r ScanResult) string { return r.FilePath })
 
-	// Generate and output report.
 	report := GenerateReport(scanResults, allowlist, sandboxDomains, *days, filesScanned)
 
 	encoder := json.NewEncoder(os.Stdout)

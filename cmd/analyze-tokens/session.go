@@ -1,12 +1,11 @@
 package main
 
 import (
-	"bufio"
 	"encoding/json"
 	"os"
-	"path/filepath"
 	"strings"
-	"time"
+
+	"github.com/usadamasa/claude-config/internal/jsonlscan"
 )
 
 // ModelTokens はモデル別のtoken使用量を表す｡
@@ -18,18 +17,18 @@ type ModelTokens struct {
 
 // SessionResult はセッション1つ分のtoken使用量集計結果を表す｡
 type SessionResult struct {
-	SessionID               string                 `json:"session_id"`
-	Project                 string                 `json:"project"`
-	Model                   string                 `json:"model"`
-	TotalInputTokens        int64                  `json:"total_input_tokens"`
-	TotalOutputTokens       int64                  `json:"total_output_tokens"`
-	TotalCacheCreationTokens int64                 `json:"total_cache_creation_tokens"`
-	TotalCacheReadTokens    int64                  `json:"total_cache_read_tokens"`
-	APICallCount            int                    `json:"api_call_count"`
-	UserMessageCount        int                    `json:"user_message_count"`
-	ModelUsage              map[string]ModelTokens `json:"model_usage"`
-	ToolUsage               map[string]int         `json:"tool_usage"`
-	FilePath                string                 `json:"file_path"`
+	SessionID                string                 `json:"session_id"`
+	Project                  string                 `json:"project"`
+	Model                    string                 `json:"model"`
+	TotalInputTokens         int64                  `json:"total_input_tokens"`
+	TotalOutputTokens        int64                  `json:"total_output_tokens"`
+	TotalCacheCreationTokens int64                  `json:"total_cache_creation_tokens"`
+	TotalCacheReadTokens     int64                  `json:"total_cache_read_tokens"`
+	APICallCount             int                    `json:"api_call_count"`
+	UserMessageCount         int                    `json:"user_message_count"`
+	ModelUsage               map[string]ModelTokens `json:"model_usage"`
+	ToolUsage                map[string]int         `json:"tool_usage"`
+	FilePath                 string                 `json:"file_path"`
 }
 
 // AverageInputTokensPerCall は1APIコールあたりの平均input tokensを返す｡
@@ -52,15 +51,9 @@ type jsonlEntry struct {
 
 // assistantMessage はassistantエントリのmessageフィールド｡
 type assistantMessage struct {
-	Model   string         `json:"model"`
-	Content []contentBlock `json:"content"`
-	Usage   tokenUsage     `json:"usage"`
-}
-
-// contentBlock はmessage.content[]の要素｡
-type contentBlock struct {
-	Type string `json:"type"`
-	Name string `json:"name"`
+	Model   string                  `json:"model"`
+	Content []jsonlscan.ContentBlock `json:"content"`
+	Usage   tokenUsage              `json:"usage"`
 }
 
 // tokenUsage はAPIレスポンスのusageフィールド｡
@@ -84,7 +77,7 @@ type progressMessage struct {
 
 // ScanSessionFile は1つのセッションJSONLファイルからtoken使用量を集計する｡
 func ScanSessionFile(path string) (*SessionResult, error) {
-	f, err := os.Open(path)
+	f, err := os.Open(path) // #nosec G304 -- CLIツール: パスはWalkDir由来
 	if err != nil {
 		return nil, err
 	}
@@ -96,8 +89,7 @@ func ScanSessionFile(path string) (*SessionResult, error) {
 		FilePath:   path,
 	}
 
-	scanner := bufio.NewScanner(f)
-	scanner.Buffer(make([]byte, 0, 1024*1024), 10*1024*1024)
+	scanner := jsonlscan.NewScanner(f)
 
 	for scanner.Scan() {
 		line := scanner.Bytes()
@@ -110,7 +102,6 @@ func ScanSessionFile(path string) (*SessionResult, error) {
 			continue
 		}
 
-		// セッションID・プロジェクト名の取得(最初に見つかったものを使用)
 		if result.SessionID == "" && entry.Session != "" {
 			result.SessionID = entry.Session
 		}
@@ -133,7 +124,6 @@ func ScanSessionFile(path string) (*SessionResult, error) {
 	return result, scanner.Err()
 }
 
-// processAssistantEntry はassistantエントリからusageを抽出して集計する｡
 func processAssistantEntry(result *SessionResult, raw json.RawMessage) {
 	if raw == nil {
 		return
@@ -145,12 +135,10 @@ func processAssistantEntry(result *SessionResult, raw json.RawMessage) {
 
 	addUsage(result, msg.Model, msg.Usage)
 
-	// 最初に見つかったモデルをセッションの代表モデルとする
 	if result.Model == "" && msg.Model != "" {
 		result.Model = msg.Model
 	}
 
-	// ツール使用のカウント
 	for _, block := range msg.Content {
 		if block.Type == "tool_use" && block.Name != "" {
 			result.ToolUsage[block.Name]++
@@ -160,7 +148,6 @@ func processAssistantEntry(result *SessionResult, raw json.RawMessage) {
 	result.APICallCount++
 }
 
-// processProgressEntry はprogressエントリ(subagent)からusageを抽出して集計する｡
 func processProgressEntry(result *SessionResult, raw json.RawMessage) {
 	if raw == nil {
 		return
@@ -180,7 +167,6 @@ func processProgressEntry(result *SessionResult, raw json.RawMessage) {
 
 	addUsage(result, msg.Model, msg.Usage)
 
-	// subagentのツール使用もカウント
 	for _, block := range msg.Content {
 		if block.Type == "tool_use" && block.Name != "" {
 			result.ToolUsage[block.Name]++
@@ -190,7 +176,6 @@ func processProgressEntry(result *SessionResult, raw json.RawMessage) {
 	result.APICallCount++
 }
 
-// addUsage はusage情報をresultに加算する｡
 func addUsage(result *SessionResult, model string, usage tokenUsage) {
 	result.TotalInputTokens += usage.InputTokens
 	result.TotalOutputTokens += usage.OutputTokens
@@ -208,32 +193,9 @@ func addUsage(result *SessionResult, model string, usage tokenUsage) {
 
 // ScanProjectsDir は指定ディレクトリ以下の全JONLファイルを走査してtoken使用量を集計する｡
 func ScanProjectsDir(projectsDir string, days int) ([]SessionResult, error) {
-	cutoff := time.Now().Add(-time.Duration(days) * 24 * time.Hour)
 	var results []SessionResult
 
-	if _, err := os.Stat(projectsDir); os.IsNotExist(err) {
-		return results, nil
-	}
-
-	err := filepath.WalkDir(projectsDir, func(path string, d os.DirEntry, err error) error {
-		if err != nil {
-			return nil
-		}
-		if d.IsDir() {
-			return nil
-		}
-		if !strings.HasSuffix(d.Name(), ".jsonl") {
-			return nil
-		}
-
-		info, err := d.Info()
-		if err != nil {
-			return nil
-		}
-		if info.ModTime().Before(cutoff) {
-			return nil
-		}
-
+	err := jsonlscan.WalkJSONLFiles(projectsDir, jsonlscan.WalkOptions{Days: days}, func(path string) error {
 		result, err := ScanSessionFile(path)
 		if err != nil {
 			return nil
@@ -250,8 +212,6 @@ func ScanProjectsDir(projectsDir string, days int) ([]SessionResult, error) {
 }
 
 // ExtractProjectName はcwdからプロジェクト名を抽出する｡
-// GitHub構成のパスから最後のディレクトリ名を取得する｡
-// worktreeパスの場合はworktree/の次のディレクトリ名を使用する｡
 func ExtractProjectName(cwd string) string {
 	if cwd == "" {
 		return ""
@@ -259,14 +219,12 @@ func ExtractProjectName(cwd string) string {
 
 	parts := strings.Split(cwd, "/")
 
-	// worktreeパスの場合: .../worktree/{project}/{branch}
 	for i, p := range parts {
 		if p == "worktree" && i+1 < len(parts) {
 			return parts[i+1]
 		}
 	}
 
-	// 末尾のディレクトリ名を返す
 	if len(parts) > 0 {
 		return parts[len(parts)-1]
 	}

@@ -64,7 +64,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version-file: go.mod
+          go-version-file: go.mod  # go.mod がサブディレクトリにある場合: go-version-file: cmd/go.mod
           cache: true
 
       - name: Setup aqua
@@ -87,7 +87,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version-file: go.mod
+          go-version-file: go.mod  # go.mod がサブディレクトリにある場合: go-version-file: cmd/go.mod
           cache: true
 
       - name: Setup aqua
@@ -122,7 +122,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version-file: go.mod
+          go-version-file: go.mod  # go.mod がサブディレクトリにある場合: go-version-file: cmd/go.mod
           cache: false
 
       - name: golangci-lint
@@ -147,6 +147,40 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+          cache: false
+
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+
+      - uses: aquaproj/aqua-installer@v3
+        with:
+          aqua_version: v2.53.3
+
+      - name: govulncheck
+        run: govulncheck ./...
+
+      - name: gosec
+        run: gosec ./...
+```
+
+### サブディレクトリ構成の場合
+
+`go.mod` がリポジトリルート直下ではなくサブディレクトリ (例: `cmd/`) にある場合は、
+`defaults.run.working-directory` と `go-version-file` を調整する:
+
+```yaml
+  security-scan:
+    name: Security scan
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cmd
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: cmd/go.mod
           cache: false
 
       - name: Install govulncheck

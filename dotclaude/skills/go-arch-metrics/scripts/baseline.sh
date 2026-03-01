@@ -14,7 +14,19 @@ if [[ ! -d "$PROJECT_ROOT" ]]; then
 fi
 
 if [[ ! -f "${PROJECT_ROOT}/go.mod" ]]; then
-    echo "エラー: go.mod が見つかりません。Go プロジェクトルートを指定してください: $PROJECT_ROOT" >&2
+    # サブディレクトリに go.mod があるか検索
+    FOUND_MODS=$(find "$PROJECT_ROOT" -maxdepth 2 -name "go.mod" -not -path "*/vendor/*" 2>/dev/null)
+    if [[ -n "$FOUND_MODS" ]]; then
+        printf '%s\n' "エラー: ${PROJECT_ROOT}/go.mod が見つかりません。" >&2
+        printf '%s\n' "以下のサブディレクトリに go.mod があります:" >&2
+        echo "$FOUND_MODS" | while read -r f; do
+            printf '  %s\n' "$(dirname "$f")" >&2
+        done
+        FIRST_MOD=$(echo "$FOUND_MODS" | head -1)
+        printf '%s\n' "使用方法: baseline.sh $(dirname "$FIRST_MOD")" >&2
+    else
+        printf '%s\n' "エラー: go.mod が見つかりません。Go プロジェクトルートを指定してください: $PROJECT_ROOT" >&2
+    fi
     exit 1
 fi
 

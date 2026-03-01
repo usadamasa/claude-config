@@ -14,6 +14,8 @@ HOOK_NAME="worktree-create"
 SCRIPT_DIR="${SCRIPT_DIR:-$(cd "$(dirname "$0")" && pwd)}"
 # shellcheck disable=SC1091 # Dynamically resolved path
 source "$SCRIPT_DIR/lib/hook-logger.sh"
+# shellcheck disable=SC1091 # Dynamically resolved path
+source "$SCRIPT_DIR/lib/sync-main-repo.sh"
 
 # 前提コマンドチェック
 if ! command -v jq &>/dev/null; then
@@ -25,6 +27,17 @@ fi
 INPUT=$(cat)
 NAME=$(echo "$INPUT" | jq -r '.name // empty')
 CWD=$(echo "$INPUT" | jq -r '.cwd // empty')
+
+# メインリポジトリを同期 (git wt の前に実行して最新コードから分岐させる)
+# CWD が worktree なら resolve_main_repo で親リポジトリを解決、
+# CWD 自体がメインリポジトリなら CWD をそのまま使う
+MAIN_REPO=$(resolve_main_repo "$CWD" 2>/dev/null) || MAIN_REPO=""
+if [ -z "$MAIN_REPO" ] && [ -d "$CWD/.git" ]; then
+  MAIN_REPO="$CWD"
+fi
+if [ -n "$MAIN_REPO" ]; then
+  sync_main_repo "$MAIN_REPO"
+fi
 
 if is_dry_run; then
   # dry-run: git wt を実行せず、ダミーパスを返す

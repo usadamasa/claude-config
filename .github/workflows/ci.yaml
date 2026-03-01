@@ -41,6 +41,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Build Go binaries for bats tests
+        run: |
+          mkdir -p dotclaude/bin
+          go build -o dotclaude/bin/guard-home-dir ./cmd/guard-home-dir
+
       - name: Install bats-core
         run: |
           sudo apt-get update -q

@@ -56,7 +56,7 @@ jobs:
           go-version-file: cmd/go.mod
           cache: false
 
-      - uses: aquaproj/aqua-installer@v3
+      - uses: aquaproj/aqua-installer@v3.1.2
         with:
           aqua_version: v2.53.3
 
@@ -80,7 +80,7 @@ jobs:
       - name: Install govulncheck
         run: go install golang.org/x/vuln/cmd/govulncheck@latest
 
-      - uses: aquaproj/aqua-installer@v3
+      - uses: aquaproj/aqua-installer@v3.1.2
         with:
           aqua_version: v2.53.3
 

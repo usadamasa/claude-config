@@ -58,6 +58,22 @@ resolve_main_repo() {
   return 0
 }
 
+# git fetch をタイムアウト付きで実行する
+# SYNC_FETCH_TIMEOUT (デフォルト 30秒) を超えると中断
+# GIT_TERMINAL_PROMPT=0 でパスワードプロンプトを抑制 (SSH/HTTPS 両対応)
+_git_fetch_with_timeout() {
+  local main_repo="$1"
+  local fetch_timeout="${SYNC_FETCH_TIMEOUT:-30}"
+
+  if command -v timeout >/dev/null 2>&1; then
+    GIT_TERMINAL_PROMPT=0 timeout "$fetch_timeout" \
+      git -C "$main_repo" fetch origin 2>/dev/null
+  else
+    GIT_TERMINAL_PROMPT=0 \
+      git -C "$main_repo" fetch origin 2>/dev/null
+  fi
+}
+
 # メインリポジトリを fetch + ff-only merge で同期する
 # 実際の失敗 (fetch, merge, config) は return 1 で呼び出し元に伝播する
 # skip 条件 (detached HEAD, feature ブランチ中, デフォルトブランチ不在) は return 0
@@ -84,13 +100,19 @@ sync_main_repo() {
     fi
   fi
 
-  # git fetch origin
+  # git fetch origin (タイムアウト付き)
   log_info "sync: fetching origin"
   if is_dry_run; then
     log_info "sync: CMD    git -C $main_repo fetch origin"
   else
-    if ! git -C "$main_repo" fetch origin 2>/dev/null; then
-      log_error "sync: fetch failed"
+    local fetch_exit=0
+    _git_fetch_with_timeout "$main_repo" || fetch_exit=$?
+    if [ "$fetch_exit" -ne 0 ]; then
+      if [ "$fetch_exit" -eq 124 ]; then
+        log_error "sync: fetch timed out after ${SYNC_FETCH_TIMEOUT:-30}s"
+      else
+        log_error "sync: fetch failed (exit: $fetch_exit)"
+      fi
       return 1
     fi
   fi

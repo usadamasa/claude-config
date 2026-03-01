@@ -139,11 +139,11 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "Read|Edit|Write|Glob|Grep|NotebookEdit",
+        "matcher": "Read|Edit|Write|Glob|Grep|NotebookEdit|Bash",
         "hooks": [
           {
             "type": "command",
-            "command": "$HOME/.claude/hooks/guard-home-dir.sh"
+            "command": "$HOME/.claude/bin/guard-home-dir"
           }
         ]
       },

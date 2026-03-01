@@ -15,6 +15,7 @@ readonly ALLOWED_PATHS=(
   "$HOME/obsidian"
   "$HOME/src"
   "$HOME/tmp"
+  "$HOME/workspace"
   "$PROJECT_DIR"
 )
 

@@ -4,24 +4,50 @@ tasks:
   test:
     desc: Go テストを実行
     cmds:
-      - go test ./cmd/...
+      - go test ./...
 
   test-v:
     desc: Go テストを詳細モードで実行
     cmds:
-      - go test -v ./cmd/...
+      - go test -v ./...
+
+  test-cover:
+    desc: カバレッジ付きテスト
+    cmds:
+      - go test -coverprofile=coverage.out ./...
+      - go tool cover -func=coverage.out
 
   build:
     desc: Go バイナリをビルド
     cmds:
-      - go build ./cmd/...
+      - go build ./...
 
   vet:
     desc: Go vet を実行
     cmds:
-      - go vet ./cmd/...
+      - go vet ./...
 
   lint:
     desc: golangci-lint でアーキテクチャメトリクスをチェック
     cmds:
-      - golangci-lint run --timeout 5m ./cmd/...
+      - golangci-lint run --timeout 5m ./...
+
+  lint:arch:
+    desc: パッケージ依存方向チェック
+    cmds:
+      - go-arch-lint check --project-path cmd/
+    dir: '{{.ROOT_DIR}}'
+
+  lint:vuln:
+    desc: 脆弱性スキャン
+    cmds:
+      - govulncheck ./...
+
+  lint:sec:
+    desc: セキュリティ解析
+    cmds:
+      - gosec ./...
+
+  lint:all:
+    desc: 全静的解析を実行
+    deps: [vet, lint, lint:arch, lint:vuln, lint:sec]

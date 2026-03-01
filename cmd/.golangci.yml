@@ -18,25 +18,23 @@ linters:
     - staticcheck  # standard に含まれるが明示的に指定
 
   settings:
-    # 認知的複雑度: テストコード最大値 72 より上の 75 からスタート
-    # TODO: テストファイルを t.Run() で分割後に 35 まで引き下げる
+    # 認知的複雑度: 実測最大値 34 (GenerateReport) の直上
     gocognit:
-      min-complexity: 75
+      min-complexity: 35
 
-    # 循環複雑度 (McCabe): テストコード最大値 37 より上の 40 からスタート
-    # TODO: テストファイルを分割後に 22 まで引き下げる
+    # 循環複雑度 (McCabe): 実測最大値 21 (GenerateReport)
+    # TODO: GenerateReport を分割後に 15 まで引き下げる
     gocyclo:
-      min-complexity: 40
+      min-complexity: 22
 
-    # 循環複雑度 (cyclop): 生産コード最大値 21 より上の 23 からスタート
-    # TODO: 段階的に 15 まで引き下げる
+    # 循環複雑度 (cyclop): 実測最大値 21 (GenerateReport)
+    # TODO: GenerateReport を分割後に 15 まで引き下げる
     cyclop:
-      max-complexity: 23
+      max-complexity: 22
 
-    # 関数の長さ: テストコード最大値 ~200行 より上の 210行 からスタート
-    # TODO: テストファイルを分割後に lines:100/statements:60 まで引き下げる
+    # 関数の長さ: 実測最大値 lines=117, statements=57
     funlen:
-      lines: 210
+      lines: 120
       statements: 60
 
     # ネストの深さ

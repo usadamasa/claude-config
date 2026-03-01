@@ -1,20 +1,10 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
-	"os"
 	"strings"
-)
 
-// settingsJSON は settings.json のパーミッション関連部分を表す｡
-type settingsJSON struct {
-	Permissions struct {
-		Allow []string `json:"allow"`
-		Deny  []string `json:"deny"`
-		Ask   []string `json:"ask"`
-	} `json:"permissions"`
-}
+	"github.com/usadamasa/claude-config/internal/settings"
+)
 
 // targetToolNames はパーミッション分析対象のツール名セット｡
 var targetToolNames = map[string]bool{
@@ -26,26 +16,16 @@ var targetToolNames = map[string]bool{
 
 // LoadPermissions は settings.json から allow, deny, ask リストを読み込む｡
 func LoadPermissions(settingsPath string) (allow, deny, ask []string, err error) {
-	data, err := os.ReadFile(settingsPath)
+	s, err := settings.Load(settingsPath)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-
-	var settings settingsJSON
-	if err := json.Unmarshal(data, &settings); err != nil {
-		return nil, nil, nil, fmt.Errorf("settings JSON のパースに失敗: %w", err)
-	}
-
-	return settings.Permissions.Allow, settings.Permissions.Deny, settings.Permissions.Ask, nil
+	return s.Permissions.Allow, s.Permissions.Deny, s.Permissions.Ask, nil
 }
 
 // ParsePermissionEntry はパーミッション文字列をツール名とパターンに分解する｡
 // 対象ツール(Bash, Read, Write, Edit)のエントリのみ ok=true を返す｡
-// 例: "Bash(git status:*)" → tool="Bash", pattern="git status", ok=true
-// 例: "Bash" → tool="Bash", pattern="", ok=true (ベアエントリ)
-// 例: "WebFetch(domain:github.com)" → ok=false
 func ParsePermissionEntry(entry string) (tool, pattern string, ok bool) {
-	// 括弧なしのベアエントリ
 	if !strings.Contains(entry, "(") {
 		if targetToolNames[entry] {
 			return entry, "", true
@@ -53,7 +33,6 @@ func ParsePermissionEntry(entry string) (tool, pattern string, ok bool) {
 		return "", "", false
 	}
 
-	// 括弧付きエントリ: Tool(pattern) or Tool(pattern:*)
 	parenIdx := strings.Index(entry, "(")
 	if parenIdx < 0 || !strings.HasSuffix(entry, ")") {
 		return "", "", false
@@ -65,8 +44,6 @@ func ParsePermissionEntry(entry string) (tool, pattern string, ok bool) {
 	}
 
 	inner := entry[parenIdx+1 : len(entry)-1]
-
-	// ":*" サフィックスを除去(例: "git status:*" → "git status")
 	inner = strings.TrimSuffix(inner, ":*")
 
 	return tool, inner, true
@@ -83,23 +60,18 @@ func MatchesPermission(toolName, pattern string, permissions []string) bool {
 			continue
 		}
 
-		// ベアエントリは全パターンにマッチ
 		if permPattern == "" {
 			return true
 		}
 
-		// 完全一致
 		if permPattern == pattern {
 			return true
 		}
 
-		// プレフィックスマッチ (Bash の :* 形式に対応)
-		// "gh" は "gh pr" にマッチ、"src" は "src/main.go" にマッチ
 		if strings.HasPrefix(pattern, permPattern+" ") || strings.HasPrefix(pattern, permPattern+"/") {
 			return true
 		}
 
-		// ワイルドカードマッチ: "~/.claude/**" は "~/.claude/skills/foo" にマッチ
 		if strings.HasSuffix(permPattern, "/**") {
 			prefix := permPattern[:len(permPattern)-3]
 			if strings.HasPrefix(pattern, prefix+"/") || pattern == prefix {
@@ -107,7 +79,6 @@ func MatchesPermission(toolName, pattern string, permissions []string) bool {
 			}
 		}
 
-		// パターン末尾の ** マッチ: "src/**" は "src/main.go" にマッチ
 		if strings.HasSuffix(permPattern, "**") {
 			prefix := permPattern[:len(permPattern)-2]
 			if strings.HasPrefix(pattern, prefix) {

@@ -3,6 +3,9 @@ package main
 import (
 	"encoding/json"
 	"testing"
+
+	"github.com/usadamasa/claude-config/internal/jsonlscan"
+	"github.com/usadamasa/claude-config/internal/pathutil"
 )
 
 func TestGenerateReport(t *testing.T) {
@@ -135,18 +138,18 @@ func TestGenerateReport(t *testing.T) {
 
 func TestResolveProjectsDir(t *testing.T) {
 	t.Run("--projects-dir 指定時はそのパスを使う", func(t *testing.T) {
-		got := resolveProjectsDir("/custom/projects", "/home/user")
+		got := pathutil.ResolveProjectsDir("/custom/projects", "/home/user")
 		want := "/custom/projects"
 		if got != want {
-			t.Errorf("resolveProjectsDir: got %q, want %q", got, want)
+			t.Errorf("pathutil.ResolveProjectsDir: got %q, want %q", got, want)
 		}
 	})
 
 	t.Run("未指定時は ~/.claude/projects を使う", func(t *testing.T) {
-		got := resolveProjectsDir("", "/home/user")
+		got := pathutil.ResolveProjectsDir("", "/home/user")
 		want := "/home/user/.claude/projects"
 		if got != want {
-			t.Errorf("resolveProjectsDir: got %q, want %q", got, want)
+			t.Errorf("pathutil.ResolveProjectsDir: got %q, want %q", got, want)
 		}
 	})
 }
@@ -302,8 +305,8 @@ func TestCountUniqueFiles(t *testing.T) {
 		{FilePath: "a.jsonl"},
 		{FilePath: "b.jsonl"},
 	}
-	got := countUniqueFiles(results)
+	got := jsonlscan.CountUniqueFiles(results, func(r ScanResult) string { return r.FilePath })
 	if got != 2 {
-		t.Errorf("countUniqueFiles: got %d, want 2", got)
+		t.Errorf("CountUniqueFiles: got %d, want 2", got)
 	}
 }

@@ -135,6 +135,49 @@ jobs:
 
 ---
 
+## セキュリティスキャンジョブ
+
+```yaml
+  security-scan:
+    name: Security scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+
+      - uses: aquaproj/aqua-installer@v3
+        with:
+          aqua_version: v2.53.3
+
+      - name: govulncheck
+        run: govulncheck ./...
+
+      - name: gosec
+        run: gosec ./...
+```
+
+## カバレッジ計測
+
+```yaml
+      - name: go test with coverage
+        run: go test -coverprofile=coverage.out ./...
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage.out
+```
+
+---
+
 ## PR ゲートとしての活用
 
 ### 新規違反のみをチェック (段階的導入)

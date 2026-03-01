@@ -3,22 +3,24 @@ package main
 import (
 	"encoding/json"
 	"testing"
+
+	"github.com/usadamasa/claude-config/internal/pathutil"
 )
 
 func TestResolveProjectsDir(t *testing.T) {
 	t.Run("--projects-dir 指定時はそのパスを使う", func(t *testing.T) {
-		got := resolveProjectsDir("/custom/projects", "/home/user")
+		got := pathutil.ResolveProjectsDir("/custom/projects", "/home/user")
 		want := "/custom/projects"
 		if got != want {
-			t.Errorf("resolveProjectsDir: got %q, want %q", got, want)
+			t.Errorf("ResolveProjectsDir: got %q, want %q", got, want)
 		}
 	})
 
 	t.Run("未指定時は ~/.claude/projects を使う", func(t *testing.T) {
-		got := resolveProjectsDir("", "/home/user")
+		got := pathutil.ResolveProjectsDir("", "/home/user")
 		want := "/home/user/.claude/projects"
 		if got != want {
-			t.Errorf("resolveProjectsDir: got %q, want %q", got, want)
+			t.Errorf("ResolveProjectsDir: got %q, want %q", got, want)
 		}
 	})
 }
@@ -39,7 +41,6 @@ func TestGenerateReport(t *testing.T) {
 
 		report := GenerateReport(scanResults, allowlist, nil, 30, 2)
 
-		// Verify metadata
 		if report.Metadata.DaysAnalyzed != 30 {
 			t.Errorf("expected days_analyzed=30, got %d", report.Metadata.DaysAnalyzed)
 		}
@@ -50,12 +51,10 @@ func TestGenerateReport(t *testing.T) {
 			t.Errorf("expected webfetch_calls=5, got %d", report.Metadata.WebFetchCalls)
 		}
 
-		// Verify current allowlist
 		if len(report.CurrentAllowlist) != 2 {
 			t.Fatalf("expected 2 allowlist entries, got %d", len(report.CurrentAllowlist))
 		}
 
-		// Verify add recommendations (safe domains not in allowlist)
 		foundNewLib := false
 		for _, rec := range report.Recommendations.Add {
 			if rec.Domain == "docs.new-lib.io" {
@@ -69,7 +68,6 @@ func TestGenerateReport(t *testing.T) {
 			t.Error("expected docs.new-lib.io in add recommendations")
 		}
 
-		// Verify review recommendations (medium/review domains not in allowlist)
 		foundSO := false
 		for _, rec := range report.Recommendations.Review {
 			if rec.Domain == "stackoverflow.com" {
@@ -80,7 +78,6 @@ func TestGenerateReport(t *testing.T) {
 			t.Error("expected stackoverflow.com in review recommendations")
 		}
 
-		// Verify unused domains
 		foundUnused := false
 		for _, rec := range report.Recommendations.Unused {
 			if rec.Domain == "docs.unused.com" {
@@ -91,7 +88,6 @@ func TestGenerateReport(t *testing.T) {
 			t.Error("expected docs.unused.com in unused recommendations")
 		}
 
-		// Verify all_domains list
 		if len(report.AllDomains) != 4 {
 			t.Errorf("expected 4 domains in all_domains, got %d", len(report.AllDomains))
 		}
@@ -136,7 +132,6 @@ func TestGenerateReport(t *testing.T) {
 			{Tool: "WebFetch", Domain: "github.com"},
 			{Tool: "WebFetch", Domain: "docs.example.com"},
 		}
-		// sandbox に github.com はワイルドカードで含まれるが docs.example.com は含まれない
 		sandboxDomains := []string{"*.github.com", "go.dev"}
 
 		report := GenerateReport(scanResults, allowlist, sandboxDomains, 30, 1)

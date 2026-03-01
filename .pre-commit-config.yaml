@@ -1,8 +1,11 @@
 repos:
-  - repo: https://github.com/koalaman/shellcheck-precommit
-    rev: v0.10.0
+  - repo: local
     hooks:
       - id: shellcheck
+        name: ShellCheck
+        language: system
+        entry: shellcheck
+        types: [shell]
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
     hooks:

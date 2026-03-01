@@ -165,6 +165,68 @@ go-arch-lint graph ./... | dot -Tsvg > arch.svg
 
 ---
 
+## govulncheck
+
+### 概要
+
+Go の既知の脆弱性データベース (vuln.go.dev) に基づき、プロジェクトの依存関係に
+脆弱性がないかスキャンするツール。Go チーム公式。
+
+### インストールと実行
+
+```bash
+# go install で導入
+go install golang.org/x/vuln/cmd/govulncheck@latest
+
+# 実行
+govulncheck ./...
+```
+
+### 出力例
+
+```
+Scanning your code and 42 packages across 3 dependent modules for known vulnerabilities...
+
+No vulnerabilities found.
+```
+
+---
+
+## gosec
+
+### 概要
+
+Go ソースコードのセキュリティ問題を検出する静的解析ツール。
+SQL インジェクション、ハードコードされた認証情報、弱い暗号等を検出する。
+
+### インストールと実行
+
+```bash
+# aqua 経由 (推奨)
+# aqua.yaml に securego/gosec@v2.22.4 を追加
+aqua install
+
+# 実行
+gosec ./...
+```
+
+### 出力例
+
+```
+[gosec] 2024/01/01 Results:
+
+Golang errors in file: [/path/to/file.go]
+
+Summary:
+  Gosec: dev
+  Files: 15
+  Lines: 1234
+  Nosec: 0
+  Issues: 0
+```
+
+---
+
 ## しきい値の根拠
 
 | しきい値 | 根拠 |

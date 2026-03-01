@@ -114,6 +114,24 @@ if len(violations) > 10:
     echo ""
 fi
 
+# govulncheck の実行
+if check_tool govulncheck; then
+    echo "--- govulncheck (脆弱性スキャン) ---"
+    pushd "$PROJECT_ROOT" >/dev/null
+    govulncheck ./... 2>&1 || true
+    popd >/dev/null
+    echo ""
+fi
+
+# gosec の実行
+if check_tool gosec; then
+    echo "--- gosec (セキュリティ解析) ---"
+    pushd "$PROJECT_ROOT" >/dev/null
+    gosec ./... 2>&1 || true
+    popd >/dev/null
+    echo ""
+fi
+
 # パッケージ統計 (go list)
 echo "--- パッケージ統計 ---"
 pushd "$PROJECT_ROOT" >/dev/null

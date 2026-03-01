@@ -14,8 +14,6 @@ HOOK_NAME="worktree-remove"
 SCRIPT_DIR="${SCRIPT_DIR:-$(cd "$(dirname "$0")" && pwd)}"
 # shellcheck disable=SC1091 # Dynamically resolved path
 source "$SCRIPT_DIR/lib/hook-logger.sh"
-# shellcheck disable=SC1091 # Dynamically resolved path
-source "$SCRIPT_DIR/lib/sync-main-repo.sh"
 
 # 前提コマンドチェック
 if ! command -v jq &>/dev/null; then
@@ -32,9 +30,6 @@ if [ -z "$WORKTREE_PATH" ]; then
   exit 1
 fi
 
-# 削除前にメインリポジトリパスを解決 (.git ファイルが消える前に)
-MAIN_REPO=$(resolve_main_repo "$WORKTREE_PATH" 2>/dev/null) || MAIN_REPO=""
-
 # メモリセーブ (失敗しても続行、DRY_RUN は環境変数として自動伝播)
 "$SCRIPT_DIR/worktree-memory-save.sh" "$WORKTREE_PATH" || true
 
@@ -48,9 +43,4 @@ else
     logged_cmd git worktree remove --force "$WORKTREE_PATH"
     logged_cmd git worktree prune
   fi
-fi
-
-# 削除後にメインリポジトリを同期
-if [ -n "$MAIN_REPO" ]; then
-  sync_main_repo "$MAIN_REPO"
 fi

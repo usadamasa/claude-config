@@ -148,26 +148,32 @@ tasks:
     cmds:
       - mkdir -p dotclaude/bin
       - go build -o dotclaude/bin/realpath ./cmd/realpath
+      - go build -o dotclaude/bin/guard-home-dir ./cmd/guard-home-dir
     sources:
       - cmd/realpath/*.go
+      - cmd/guard-home-dir/*.go
     generates:
       - dotclaude/bin/realpath
+      - dotclaude/bin/guard-home-dir
 
   build:docker-bin:
     desc: Docker (Linux) 用 Go バイナリをクロスコンパイル
     cmds:
       - mkdir -p docker/bin
       - GOOS=linux go build -o docker/bin/realpath ./cmd/realpath
+      - GOOS=linux go build -o docker/bin/guard-home-dir ./cmd/guard-home-dir
       - GOOS=linux go build -o docker/bin/analyze-permissions ./cmd/analyze-permissions
       - GOOS=linux go build -o docker/bin/analyze-webfetch ./cmd/analyze-webfetch
       - GOOS=linux go build -o docker/bin/analyze-tokens ./cmd/analyze-tokens
     sources:
       - cmd/realpath/*.go
+      - cmd/guard-home-dir/*.go
       - cmd/analyze-permissions/*.go
       - cmd/analyze-webfetch/*.go
       - cmd/analyze-tokens/*.go
     generates:
       - docker/bin/realpath
+      - docker/bin/guard-home-dir
       - docker/bin/analyze-permissions
       - docker/bin/analyze-webfetch
       - docker/bin/analyze-tokens

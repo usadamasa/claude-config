@@ -143,7 +143,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$HOME/.claude/hooks/guard-home-dir.sh"
+            "command": "$HOME/.claude/bin/guard-home-dir"
           }
         ]
       },
@@ -153,6 +153,10 @@
           {
             "type": "command",
             "command": "$HOME/.claude/hooks/guard-git-config.sh"
+          },
+          {
+            "type": "command",
+            "command": "$HOME/.claude/bin/guard-home-dir"
           }
         ]
       }

@@ -202,6 +202,99 @@ func processItem(item Item) error {
 
 ---
 
+### コード重複の是正
+
+#### package main 間のユーティリティ重複
+
+**問題**: `cmd/` 配下の複数コマンドが同一の関数を丸ごとコピーしている
+
+```go
+// ❌ Bad: cmd/realpath/main.go と cmd/guard-home-dir/realpath.go に同一の resolveRealpath()
+package main
+
+func resolveRealpath(path string) (string, error) {
+    // 完全に同一の実装が2箇所に存在
+}
+```
+
+**是正**: `internal/` パッケージに共通ユーティリティとして抽出する
+
+```go
+// ✅ Good: internal/pathutil/realpath.go に共通化
+package pathutil
+
+func ResolveRealpath(path string) (string, error) {
+    // 一箇所で管理
+}
+
+// cmd/guard-home-dir/main.go
+import "github.com/usadamasa/dotfile/internal/pathutil"
+resolved, err := pathutil.ResolveRealpath(home)
+```
+
+**判断基準**: 2箇所以上で同一実装が存在し、それぞれ独立に修正される可能性がある場合は抽出する。テストヘルパー (`writeTestFile` 等) も同様。
+
+#### 標準ライブラリの再実装
+
+**問題**: 標準ライブラリに既存の関数を自前で実装している
+
+```go
+// ❌ Bad: slices.Equal が標準ライブラリにあるのに独自実装
+func sliceEqual(a, b []string) bool {
+    if len(a) != len(b) { return false }
+    for i := range a {
+        if a[i] != b[i] { return false }
+    }
+    return true
+}
+
+// ✅ Good: 標準ライブラリを使う
+import "slices"
+if !slices.Equal(got, tt.want) { ... }
+```
+
+**チェックポイント**: 新しい関数を書く前に `go doc` や pkg.go.dev で同名・同目的の関数がないか確認する。特に `slices`, `maps`, `cmp` パッケージ (Go 1.21+)。
+
+#### 冗長な条件分岐
+
+**問題**: bool を返すだけの冗長な if-else
+
+```go
+// ❌ Bad: 冗長な返却
+func isRedirect(tok string) bool {
+    if strings.Contains(tok, ">/") || strings.Contains(tok, ">&") {
+        return true
+    }
+    return false
+}
+
+// ✅ Good: 条件式をそのまま返す
+func isRedirect(tok string) bool {
+    return strings.Contains(tok, ">/") || strings.Contains(tok, ">&")
+}
+```
+
+#### switch case の不必要な分離
+
+**問題**: 同一処理の case を分けて書いている
+
+```go
+// ❌ Bad: du と tree で同じ処理なのに case を分離
+case "du":
+    paths := parseGenericPaths(tokens, home)
+    targets = append(targets, paths...)
+case "tree":
+    paths := parseGenericPaths(tokens, home)
+    targets = append(targets, paths...)
+
+// ✅ Good: 同一処理はまとめる
+case "du", "tree":
+    paths := parseGenericPaths(tokens, home)
+    targets = append(targets, paths...)
+```
+
+---
+
 ### 保守性違反の是正
 
 #### 保守性指数が低い (maintidx < 20)

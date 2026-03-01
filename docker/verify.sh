@@ -291,7 +291,7 @@ run_checks() {
       fi
 
       echo "=== TOOLS ==="
-      for tool in realpath analyze-permissions analyze-webfetch analyze-tokens; do
+      for tool in realpath guard-home-dir analyze-permissions analyze-webfetch analyze-tokens; do
         if [ -f "$HOME/.claude/bin/$tool" ]; then
           arch_info=$(file "$HOME/.claude/bin/$tool" 2>/dev/null)
           if echo "$arch_info" | grep -qE "ELF.*executable"; then
@@ -327,9 +327,10 @@ run_checks() {
 
       echo "=== HOOKS_DEPS ==="
       # settings.json の hooks コマンドパスが実在するか確認
-      # $HOME を実際のパスに展開して検証
+      # $HOME を実際のパスに展開して検証 (.sh スクリプトとバイナリ両方)
       jq -r ".hooks // {} | .. | .command? // empty" "$HOME/.claude/settings.json" 2>/dev/null | \
-        grep "\.sh$" | sort -u | while read -r cmd; do
+        sort -u | while read -r cmd; do
+          [ -z "$cmd" ] && continue
           resolved=$(echo "$cmd" | sed "s|\\\$HOME|$HOME|g; s|~|$HOME|g")
           name=$(basename "$resolved")
           if [ -f "$resolved" ]; then

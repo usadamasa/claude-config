@@ -102,7 +102,7 @@ SQUASH_BASE=$(git merge-base HEAD "origin/$PARENT")
 
 2. 非対話的 rebase で fixup:
    ```bash
-   GIT_SEQUENCE_EDITOR="sed -i '' '2,\$s/^pick/fixup/'" git rebase -i "$SQUASH_BASE"
+   git -c sequence.editor="sed -i '' '2,\$s/^pick/fixup/'" rebase -i "$SQUASH_BASE"
    ```
    - コンフリクト時: `git rebase --abort` で中止し、ユーザーに手動解決を促す
 

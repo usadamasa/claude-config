@@ -61,8 +61,11 @@ git 操作 (commit, push, PR作成) の前に、必ず以下を実行する:
 
 ### 破壊的操作
 
-- `git rebase`, `git reset` は原則使用しない｡必要な場合はユーザー確認を取る｡
+- `git push --force` は原則使用しない｡`--force-with-lease` を使う｡
+- `git reset --hard` は変更消失のリスクがあるため慎重に使用する｡
 - `git stash` より worktree 分離を優先する｡
+- `git config` の書き込みは PreToolUse フック (`guard-git-config.sh`) でブロックされる｡
+  読み取り (`--get`, `--list`) と worktree 用 `remote.origin.fetch` 設定は例外として許可｡
 
 ## セッション管理
 

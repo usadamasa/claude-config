@@ -44,7 +44,7 @@ func ScanJSONLFiles(projectsDir string, days int) ([]ScanResult, error) {
 
 // scanSingleFile reads a JSONL file line by line and extracts WebFetch entries.
 func scanSingleFile(path string) ([]ScanResult, error) {
-	f, err := os.Open(path)
+	f, err := os.Open(path) // #nosec G304 -- CLIツール: パスはWalkDir由来
 	if err != nil {
 		return nil, err
 	}

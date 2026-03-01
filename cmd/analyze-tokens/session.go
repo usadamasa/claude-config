@@ -77,7 +77,7 @@ type progressMessage struct {
 
 // ScanSessionFile は1つのセッションJSONLファイルからtoken使用量を集計する｡
 func ScanSessionFile(path string) (*SessionResult, error) {
-	f, err := os.Open(path)
+	f, err := os.Open(path) // #nosec G304 -- CLIツール: パスはWalkDir由来
 	if err != nil {
 		return nil, err
 	}

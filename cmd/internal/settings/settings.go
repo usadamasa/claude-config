@@ -22,7 +22,7 @@ type Settings struct {
 
 // Load は settings.json を読み込んでパースする｡
 func Load(path string) (*Settings, error) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) // #nosec G304 -- CLIツール: パスはフラグ引数由来
 	if err != nil {
 		return nil, err
 	}

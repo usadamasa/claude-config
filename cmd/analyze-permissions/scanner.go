@@ -47,7 +47,7 @@ func ScanJSONLFiles(projectsDir string, days int) ([]ScanResult, error) {
 
 // scanSingleFile は JSONL ファイルを1行ずつ読み取り、対象ツールのエントリを抽出する｡
 func scanSingleFile(path string) ([]ScanResult, error) {
-	f, err := os.Open(path)
+	f, err := os.Open(path) // #nosec G304 -- CLIツール: パスはWalkDir由来
 	if err != nil {
 		return nil, err
 	}

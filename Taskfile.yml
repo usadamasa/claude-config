@@ -76,7 +76,7 @@ tasks:
         done
       # dotclaude/ 配下のディレクトリの symlink
       - |
-        for dir in dotclaude/hooks; do
+        for dir in dotclaude/hooks dotclaude/bin; do
           if [ -d "{{.TASKFILE_DIR}}/$dir" ]; then
             basename=$(basename "$dir")
             target="$HOME/.claude/$basename"
@@ -111,6 +111,7 @@ tasks:
         echo "  CLAUDE.md (← CLAUDE-global.md): $(test -L "$HOME/.claude/CLAUDE.md" && echo '✓' || echo '✗')"
         echo "  settings.json: $(test -L "$HOME/.claude/settings.json" && echo '✓' || echo '✗')"
         echo "  hooks: $(test -L "$HOME/.claude/hooks" && echo '✓' || echo '✗')"
+        echo "  bin: $(test -L "$HOME/.claude/bin" && echo '✓' || echo '✗')"
         echo "  env.sh: $(test -L "$HOME/.claude/env.sh" && echo '✓' || echo '✗')"
         echo "  skills:"
         for skill_dir in "{{.TASKFILE_DIR}}/dotclaude/skills"/*/; do
@@ -124,12 +125,14 @@ tasks:
     cmds:
       - rm -f "$HOME/.claude/CLAUDE.md" "$HOME/.claude/settings.json" "$HOME/.claude/env.sh"
       - |
-        target="$HOME/.claude/hooks"
-        if [ -L "$target" ]; then
-          rm -f "$target"
-        elif [ -d "$target" ]; then
-          rm -rf "$target"
-        fi
+        for dir in hooks bin; do
+          target="$HOME/.claude/$dir"
+          if [ -L "$target" ]; then
+            rm -f "$target"
+          elif [ -d "$target" ]; then
+            rm -rf "$target"
+          fi
+        done
       - |
         for skill_dir in "{{.TASKFILE_DIR}}/dotclaude/skills"/*/; do
           [ -d "$skill_dir" ] || continue

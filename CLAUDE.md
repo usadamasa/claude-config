@@ -12,6 +12,7 @@ Claude Code のグローバル設定を構成管理するリポジトリ｡
 | `dotclaude/settings.json` | パーミッション・モデル設定 (→ `~/.claude/settings.json`) |
 | `dotclaude/env.sh` | 環境変数設定 (→ `~/.claude/env.sh`) |
 | `dotclaude/hooks/` | セッションフック (→ `~/.claude/hooks/`) |
+| `dotclaude/bin/` | フック用 Go バイナリ (→ `~/.claude/bin/`) |
 | `dotclaude/skills/` | グローバルスキル (各サブディレクトリ → `~/.claude/skills/`) |
 | `CLAUDE.md` | このファイル (プロジェクトスコープ) |
 | `cmd/` | Go CLI ツール (詳細は `cmd/CLAUDE.md`) |

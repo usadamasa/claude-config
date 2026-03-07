@@ -8,10 +8,9 @@ setup() {
   TEST_TMPDIR=$(mktemp -d)
   export TEST_TMPDIR
 
-  # テスト用 git リポジトリを作成
-  git init "$TEST_TMPDIR/repo" >/dev/null 2>&1
+  # デフォルトブランチを main に固定 (CI 環境の init.defaultBranch に依存しない)
+  git init -b main "$TEST_TMPDIR/repo" >/dev/null 2>&1
   cd "$TEST_TMPDIR/repo" || return
-  # CI 環境では user.name/email が未設定のため、リポジトリローカルで設定
   git config user.name "test" >/dev/null 2>&1
   git config user.email "test@test.com" >/dev/null 2>&1
   git commit --allow-empty -m "initial" >/dev/null 2>&1
@@ -33,7 +32,6 @@ make_input() {
 
 @test "main ブランチで git commit: ブロック" {
   cd "$TEST_TMPDIR/repo" || return
-  git checkout -b main >/dev/null 2>&1 || git checkout main >/dev/null 2>&1
 
   run bash "$SCRIPT_PATH" <<< "$(make_input "git commit -m 'test'")"
 
@@ -44,7 +42,6 @@ make_input() {
 
 @test "main ブランチで git commit --amend: ブロック" {
   cd "$TEST_TMPDIR/repo" || return
-  git checkout -b main >/dev/null 2>&1 || git checkout main >/dev/null 2>&1
 
   run bash "$SCRIPT_PATH" <<< "$(make_input "git commit --amend -m 'fix'")"
 
@@ -54,8 +51,7 @@ make_input() {
 
 @test "master ブランチで git commit: ブロック" {
   cd "$TEST_TMPDIR/repo" || return
-  # デフォルトブランチが master の場合 (既に master なら checkout のみ)
-  git checkout -b master >/dev/null 2>&1 || git checkout master >/dev/null 2>&1
+  git checkout -b master >/dev/null 2>&1
 
   run bash "$SCRIPT_PATH" <<< "$(make_input "git commit -m 'test'")"
 
@@ -130,7 +126,6 @@ make_input() {
 
 @test "main ブランチで git commit && echo done: ブロック" {
   cd "$TEST_TMPDIR/repo" || return
-  git checkout -b main >/dev/null 2>&1 || git checkout main >/dev/null 2>&1
 
   run bash "$SCRIPT_PATH" <<< "$(make_input "git commit -m 'test' && echo done")"
 

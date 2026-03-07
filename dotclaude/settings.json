@@ -54,6 +54,7 @@
       "mcp__orm-discovery-mcp-go__*",
       "mcp__plugin_atlassian_atlassian__*",
       "mcp__plugin_context7_context7__*",
+      "Read(/tmp/**)",
       "Read(~/.claude/**)",
       "Read(~/src/github.com/**)",
       "Skill(commit-commands:commit-push-pr)",
@@ -87,6 +88,8 @@
       "WebFetch(domain:www.npmjs.com)",
       "WebFetch(domain:www.oreilly.co.jp)",
       "WebSearch",
+      "Write(/dev/null)",
+      "Write(/tmp/**)",
       "Write(~/.claude/**)",
       "Write(~/src/github.com/**)"
     ],
@@ -153,6 +156,15 @@
           {
             "type": "command",
             "command": "$HOME/.claude/hooks/guard-git-config.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/guard-git-commit-main.sh"
           }
         ]
       }

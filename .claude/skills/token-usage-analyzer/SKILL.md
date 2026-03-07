@@ -10,18 +10,20 @@ description: |
 
 ## CLIツールの実行
 
+`go.mod` は `cmd/` ディレクトリにあるため、claude-config リポジトリルートから `cd cmd &&` を付けて実行する。
+
 ```bash
 # 直近30日間の分析(デフォルト)
-go run ~/src/github.com/usadamasa/dotfile/main/cmd/analyze-tokens
+cd cmd && go run ./analyze-tokens
 
 # 期間指定
-go run ~/src/github.com/usadamasa/dotfile/main/cmd/analyze-tokens --days 7
+cd cmd && go run ./analyze-tokens --days 7
 
 # Top N変更
-go run ~/src/github.com/usadamasa/dotfile/main/cmd/analyze-tokens --top 20
+cd cmd && go run ./analyze-tokens --top 20
 
 # カスタムディレクトリ指定
-go run ~/src/github.com/usadamasa/dotfile/main/cmd/analyze-tokens --dir ~/.claude/projects
+cd cmd && go run ./analyze-tokens --dir ~/.claude/projects
 ```
 
 ## 出力フォーマット
@@ -79,7 +81,7 @@ JSON形式で以下のセクションを出力する:
 
 月1回、以下の手順で分析を実施する:
 
-1. `go run ~/src/github.com/usadamasa/dotfile/main/cmd/analyze-tokens --days 30` を実行
+1. `cd cmd && go run ./analyze-tokens --days 30` を実行
 2. average_input_per_call の推移を確認
 3. 未使用プラグインやスキルがあれば無効化/移動
 4. 結果を前月と比較し、改善効果を確認

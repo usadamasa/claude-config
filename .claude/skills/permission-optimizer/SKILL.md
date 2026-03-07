@@ -47,7 +47,7 @@ fi
 
 CLI を実行:
 ```bash
-go run ./cmd/analyze-permissions --days 30 --settings "$SETTINGS_PATH" --projects-dir ~/.claude/projects
+cd cmd && go run ./analyze-permissions --days 30 --settings "$SETTINGS_PATH" --projects-dir ~/.claude/projects
 ```
 
 フル JSON が必要な場合は `--format json --output /tmp/report.json` を追加する。

@@ -25,12 +25,12 @@ worktree 環境の場合、以降のステップで settings.json のパスを `
 
 **通常リポジトリ:**
 ```bash
-go run ./cmd/analyze-webfetch --days 30
+cd cmd && go run ./analyze-webfetch --days 30
 ```
 
 **worktree 環境:**
 ```bash
-go run ./cmd/analyze-webfetch --days 30 --settings $(pwd)/dotclaude/settings.json --projects-dir ~/.claude/projects
+REPO_ROOT=$(pwd) && cd cmd && go run ./analyze-webfetch --days 30 --settings "$REPO_ROOT/dotclaude/settings.json" --projects-dir ~/.claude/projects
 ```
 
 オプション:

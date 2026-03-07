@@ -4,11 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"sort"
 )
 
 // Settings は settings.json の構造を表す｡
 type Settings struct {
-	Permissions struct {
+	EnabledPlugins map[string]bool `json:"enabledPlugins"`
+	Permissions    struct {
 		Allow []string `json:"allow"`
 		Deny  []string `json:"deny"`
 		Ask   []string `json:"ask"`
@@ -18,6 +20,29 @@ type Settings struct {
 			AllowedDomains []string `json:"allowedDomains"`
 		} `json:"network"`
 	} `json:"sandbox"`
+}
+
+// CountEnabledPlugins は有効なプラグイン数を返す｡
+func (s *Settings) CountEnabledPlugins() int {
+	count := 0
+	for _, enabled := range s.EnabledPlugins {
+		if enabled {
+			count++
+		}
+	}
+	return count
+}
+
+// ListEnabledPluginNames は有効なプラグイン名の一覧をソート済みで返す｡
+func (s *Settings) ListEnabledPluginNames() []string {
+	var names []string
+	for name, enabled := range s.EnabledPlugins {
+		if enabled {
+			names = append(names, name)
+		}
+	}
+	sort.Strings(names)
+	return names
 }
 
 // Load は settings.json を読み込んでパースする｡

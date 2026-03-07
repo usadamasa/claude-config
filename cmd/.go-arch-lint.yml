@@ -35,6 +35,7 @@ deps:
     mayDependOn:
       - internal_jsonlscan
       - internal_pathutil
+      - internal_settings
   cmd_analyze_webfetch:
     mayDependOn:
       - internal_jsonlscan

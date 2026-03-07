@@ -125,7 +125,7 @@
       "mcp__plugin_atlassian_atlassian__createConfluencePage"
     ]
   },
-  "model": "opus",
+  "model": "claude-opus-4-6",
   "hooks": {
     "SessionStart": [
       {
@@ -194,7 +194,6 @@
     "claude-code-setup@claude-plugins-official": false,
     "gopls-lsp@claude-plugins-official": true,
     "jdtls-lsp@claude-plugins-official": true,
-    "orm-discovery-mcp-go@orm-discovery-mcp-go": true,
     "packer-builders@hashicorp": false,
     "packer-hcp@hashicorp": false,
     "terraform-code-generation@hashicorp": false,

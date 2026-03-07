@@ -54,8 +54,8 @@ make_input() {
 
 @test "master ブランチで git commit: ブロック" {
   cd "$TEST_TMPDIR/repo" || return
-  # デフォルトブランチが master の場合
-  git checkout -b master >/dev/null 2>&1
+  # デフォルトブランチが master の場合 (既に master なら checkout のみ)
+  git checkout -b master >/dev/null 2>&1 || git checkout master >/dev/null 2>&1
 
   run bash "$SCRIPT_PATH" <<< "$(make_input "git commit -m 'test'")"
 

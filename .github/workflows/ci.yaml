@@ -129,8 +129,28 @@ jobs:
       - name: Run shellcheck
         run: find . \( -name "*.sh" -o -name "*.bats" -o -name ".envrc" \) -not -path "./.git/*" | xargs shellcheck
 
+  settings-check:
+    name: settings.json normalization check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: cmd/go.mod
+          cache: false
+
+      - name: Build normalize-settings
+        working-directory: cmd
+        run: |
+          mkdir -p ../dotclaude/bin
+          go build -o ../dotclaude/bin/normalize-settings ./normalize-settings
+
+      - name: Check normalization
+        run: dotclaude/bin/normalize-settings --check --settings dotclaude/settings.json
+
   ci-status-check:
-    needs: [go-test, go-arch-lint, security-scan, bats-test, shellcheck]
+    needs: [go-test, go-arch-lint, security-scan, bats-test, shellcheck, settings-check]
     if: failure()
     runs-on: ubuntu-latest
     timeout-minutes: 10

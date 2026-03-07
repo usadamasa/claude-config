@@ -13,6 +13,8 @@ components:
     in: "analyze-webfetch/**"
   cmd_analyze_permissions:
     in: "analyze-permissions/**"
+  cmd_normalize_settings:
+    in: "normalize-settings/**"
   internal_pathutil:
     in: "internal/pathutil/**"
   internal_jsonlscan:
@@ -45,3 +47,6 @@ deps:
       - internal_pathutil
       - internal_settings
       - internal_category
+  cmd_normalize_settings:
+    mayDependOn:
+      - internal_pathutil

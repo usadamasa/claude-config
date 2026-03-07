@@ -6,6 +6,32 @@ repos:
         language: system
         entry: shellcheck
         types: [shell]
+  - repo: local
+    hooks:
+      - id: settings-normalize-check
+        name: settings.json normalization
+        language: system
+        entry: bash -c 'cd "$(git rev-parse --show-toplevel)" && dotclaude/bin/normalize-settings --check'
+        pass_filenames: false
+        files: dotclaude/settings\.json
+      - id: go-vet
+        name: go vet
+        language: system
+        entry: bash -c 'cd "$(git rev-parse --show-toplevel)/cmd" && go vet ./...'
+        pass_filenames: false
+        files: ^cmd/.*\.go$
+      - id: golangci-lint
+        name: golangci-lint
+        language: system
+        entry: bash -c 'cd "$(git rev-parse --show-toplevel)/cmd" && golangci-lint run ./...'
+        pass_filenames: false
+        files: ^cmd/.*\.go$
+      - id: gosec
+        name: gosec
+        language: system
+        entry: bash -c 'cd "$(git rev-parse --show-toplevel)/cmd" && gosec ./...'
+        pass_filenames: false
+        files: ^cmd/.*\.go$
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
     hooks:

@@ -224,7 +224,8 @@
     "learning-output-style@claude-plugins-official": true,
     "document-skills@anthropic-agent-skills": true,
     "skill-creator@claude-plugins-official": true,
-    "asana@claude-plugins-official": true
+    "asana@claude-plugins-official": true,
+    "orm-discovery-mcp-go@orm-discovery-mcp-go": true
   },
   "language": "三河弁のおっとりした女子小学生, フィラー多め",
   "sandbox": {
@@ -279,5 +280,6 @@
   },
   "alwaysThinkingEnabled": true,
   "autoMemoryEnabled": true,
-  "teammateMode": "auto"
+  "teammateMode": "auto",
+  "effortLevel": "high"
 }

@@ -73,6 +73,47 @@ GIT_COMMON=$(git rev-parse --git-common-dir)
 
 詳細は CLAUDE.md の「worktree 環境でのファイルパス解決」を参照。
 
+## settings.json 変更ワークフロー
+
+### コミット前の正規化
+
+`settings.json` を変更したら、コミット前に必ず正規化を実行する:
+
+```sh
+task settings:normalize  # 正規化 (ソート + ランタイムフィールド除去)
+task settings:check      # 正規化済みか検証 (CI と同じチェック)
+```
+
+### フィールド分類
+
+| フィールド | 分類 | 扱い |
+|---|---|---|
+| `permissions.allow/deny/ask` | Intentional | バージョン管理、ソート正規化 |
+| `model` | Intentional (pinned) | バージョン管理、CI で値を検証 |
+| `hooks` | Intentional | バージョン管理、変更不要 |
+| `statusLine` | Intentional | バージョン管理 |
+| `sandbox` (含 `allowedDomains`) | Intentional | バージョン管理、ソート正規化 |
+| `enabledPlugins` | Intentional | バージョン管理、キー順ソート |
+| `language` | Intentional | バージョン管理 |
+| `alwaysThinkingEnabled` | Intentional | バージョン管理 |
+| `autoMemoryEnabled` | Intentional | バージョン管理 |
+| `effortLevel` | Runtime noise | コミット前に除去 |
+| `teammateMode` | Runtime noise | コミット前に除去 |
+
+### 自動付与パーミッションの扱い
+
+- Claude Code がセッション中に自動付与したパーミッションは `task settings:normalize` でソートされる
+- 意図的な追加: PR で理由を記載してコミット
+- 意図しない追加: `git checkout -- dotclaude/settings.json` で revert
+
+### diff レビューチェックリスト
+
+settings.json を含む PR では以下を確認:
+1. `effortLevel`, `teammateMode` が含まれていないこと (ランタイムノイズ)
+2. `model` の値が意図的な変更か
+3. `enabledPlugins` のトグルが意図的か
+4. パーミッション配列の変更が意図的か (自動付与 vs 手動追加)
+
 ## 注意事項
 
 - `ln -sfn` でディレクトリ先に既存ディレクトリがあるとネスト symlink が発生する。

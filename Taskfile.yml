@@ -162,6 +162,30 @@ tasks:
       - dotclaude/bin/realpath
       - dotclaude/bin/guard-home-dir
 
+  build:normalize-settings:
+    desc: normalize-settings バイナリをビルド
+    dir: cmd
+    cmds:
+      - mkdir -p ../dotclaude/bin
+      - go build -o ../dotclaude/bin/normalize-settings ./normalize-settings
+    sources:
+      - cmd/normalize-settings/*.go
+      - cmd/internal/**/*.go
+    generates:
+      - dotclaude/bin/normalize-settings
+
+  settings:normalize:
+    desc: settings.json を正規化 (ソート + ランタイムフィールド除去)
+    deps: [build:normalize-settings]
+    cmds:
+      - dotclaude/bin/normalize-settings
+
+  settings:check:
+    desc: settings.json が正規化済みか検証 (CI用)
+    deps: [build:normalize-settings]
+    cmds:
+      - dotclaude/bin/normalize-settings --check
+
   build:docker-bin:
     desc: Docker (Linux) 用 Go バイナリをクロスコンパイル
     dir: cmd
